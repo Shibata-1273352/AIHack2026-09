@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f5f6f8;font-feature-settings:"tnum";color:#1b2430;font-family:"Noto Sans JP",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#1f5fbf}a:hover{color:#164a96}
+*{box-sizing:border-box}
+@keyframes nwpulse{0%{r:30;opacity:.8}100%{r:52;opacity:0}}
+@keyframes nwdash{to{stroke-dashoffset:-24}}
+@keyframes nwspin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+<div style="display:grid;grid-template-columns:244px minmax(0,1fr);min-height:100vh">
+  <!-- Sidebar -->
+  <aside style="background:#0f1420;color:#e6e9ee;padding:24px 14px;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 6px">
+      <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#5b93f5,#1f5fbf);box-shadow:0 4px 12px -4px rgba(59,116,217,.7);display:grid;place-items:center;font-weight:700;font-size:14px;color:#fff">N</div>
+      <div><div style="font-weight:700;font-size:15px;letter-spacing:.02em">NetWalker</div><div style="font-size:10.5px;color:#9aa4b1">障害調査エージェント</div></div>
+    </div>
+    <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 12px">
+      <div style="font-size:10.5px;color:#9aa4b1">案件</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;margin-top:2px">INC-2026-0042</div>
+      <div style="font-size:12px;margin-top:6px;color:#cfd5dd">拠点A／受注画面が開かない</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px"><span style="width:7px;height:7px;border-radius:50%;background:{{ sm.dot }}"></span><span style="font-family:'IBM Plex Mono',monospace;color:#cfd5dd">{{ sm.code }}</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="font-size:10.5px;color:#9aa4b1;padding:0 10px 6px;letter-spacing:.06em">工程</div>
+      <sc-for list="{{ steps }}" as="s" hint-placeholder-count="6">
+        <button onClick="{{ s.go }}" style="display:flex;align-items:center;gap:10px;text-align:left;border:0;cursor:pointer;background:{{ s.bg }};color:{{ s.color }};padding:9px 10px;border-radius:8px;font:inherit;font-size:13px" style-hover="background:rgba(255,255,255,.07)">
+          <span style="width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:600;background:{{ s.numBg }};color:{{ s.numColor }};flex:none">{{ s.num }}</span>
+          <span style="flex:1;min-width:0">{{ s.name }}</span>
+          <span style="font-size:10px;color:#9aa4b1">{{ s.status }}</span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="margin-top:auto;font-size:10.5px;color:#7f8a97;line-height:1.6;padding:0 6px">デモ用プロトタイプ。データはダミーです。</div>
+  </aside>
+
+  <!-- Main -->
+  <main style="display:flex;flex-direction:column;min-width:0">
+    <!-- Header -->
+    <header style="display:flex;align-items:center;gap:20px;padding:14px 28px;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border-bottom:1px solid rgba(17,24,39,.06);flex-wrap:wrap;position:sticky;top:0;z-index:5">
+      <div style="flex:1;min-width:220px">
+        <div style="font-size:11px;color:#5d6773">現在の処理</div>
+        <div style="font-size:15px;font-weight:700;margin-top:2px">{{ headline }}</div>
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div><div style="font-size:11px;color:#5d6773">業務状態</div><div style="display:inline-flex;align-items:center;gap:6px;margin-top:3px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;box-shadow:inset 0 0 0 1px rgba(17,24,39,.06);background:{{ biz.bg }};color:{{ biz.fg }}">{{ biz.label }}</div></div>
+        <div><div style="font-size:11px;color:#5d6773">経過時間</div><div style="font-family:'IBM Plex Mono',monospace;font-size:15px;margin-top:3px">{{ elapsed }}</div></div>
+        <div><div style="font-size:11px;color:#5d6773">担当</div><div style="font-size:13px;margin-top:4px">情シス・佐藤 <span style="color:#8a94a0">→ 未引き継ぎ</span></div></div>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div style="display:grid;gap:16px;padding:20px 28px 32px;grid-template-columns:{{ layout.cols }};align-items:start">
+
+      <!-- ===== Step 1: 受付 ===== -->
+      <sc-if value="{{ is1 }}" hint-placeholder-val="{{ true }}">
+        <section style="order:{{ layout.figOrder }};min-width:0;background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">構成図</h2><span style="font-size:11px;color:#5d6773">PNG / JPEG 1枚</span></div>
+          <sc-if value="{{ notUploaded }}" hint-placeholder-val="{{ true }}">
+            <div onClick="{{ upload }}" style="border:1.5px dashed #c5ccd6;border-radius:14px;min-height:300px;transition:background .15s,border-color .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;background:#f8f9fb" style-hover="background:#eef3fb;border-color:#1f5fbf">
+              <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(180deg,#eef3fc,#dfe9fa);box-shadow:0 8px 20px -10px rgba(31,95,191,.5);display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1f5fbf" stroke-width="1.8"><path d="M12 16V4M7 9l5-5 5 5"></path><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"></path></svg></div>
+              <div style="font-size:14px;font-weight:600">ネットワーク構成図をここにドロップ</div>
+              <div style="font-size:12px;color:#5d6773">または クリックしてサンプル構成図を使用</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ uploaded }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+              <div style="flex:1;min-width:260px;border:1px solid #e3e6ea;border-radius:10px;background:#fbfbfc;padding:12px">
+                <div style="font-size:11px;color:#8a94a0;margin-bottom:6px">プレビュー（原図）</div>
+                <div style="border-radius:8px;background:repeating-linear-gradient(0deg,#f1f3f5 0 1px,transparent 1px 20px),repeating-linear-gradient(90deg,#f1f3f5 0 1px,transparent 1px 20px),#fff;min-height:220px;display:grid;place-items:center;color:#8a94a0;font-size:12px;filter:grayscale(1)">構成図画像（拠点A_構成図.png）</div>
+              </div>
+              <div style="width:220px;display:flex;flex-direction:column;gap:8px;font-size:12.5px">
+                <div style="display:flex;justify-content:space-between"><span style="color:#5d6773">ファイル</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px">拠点A_構成図.png</span></div>
+                <div style="display:flex;justify-content:space-between"><span style="color:#5d6773">サイズ</span><span>1.2 MB · 1920×1080</span></div>
+                <div style="display:flex;justify-content:space-between"><span style="color:#5d6773">版</span><span>v3（2026-06-12 更新）</span></div>
+                <div style="display:inline-flex;align-items:center;gap:6px;color:#1f8a5b;margin-top:4px"><span style="width:7px;height:7px;border-radius:50%;background:#1f8a5b"></span>アップロード完了</div>
+              </div>
+            </div>
+          </sc-if>
+        </section>
+        <section style="order:2;background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:20px;display:flex;flex-direction:column;gap:14px">
+          <h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">症状の申告</h2>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#5d6773">拠点<div style="border:1px solid #d6dbe1;border-radius:8px;padding:9px 12px;font-size:13.5px;color:#1b2430;background:#fff">拠点A（東京・営業所）</div></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#5d6773">対象業務<div style="border:1px solid #d6dbe1;border-radius:8px;padding:9px 12px;font-size:13.5px;color:#1b2430;background:#fff">受注システム（https://order.example.local）</div></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#5d6773">症状<div style="border:1px solid #d6dbe1;border-radius:8px;padding:9px 12px;font-size:13.5px;color:#1b2430;background:#fff;line-height:1.6;min-height:84px">9:40頃から受注画面が開かない。社内チャットは使える。機器のランプは点灯している。</div></label>
+          <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:10px 12px;font-size:12px;color:#5d6773;line-height:1.6">接続情報・許可範囲は導入時登録済み（拠点A設定 v7）。再入力は不要です。</div>
+          <button onClick="{{ startInvestigation }}" disabled="{{ notUploaded }}" style="margin-top:auto;border:0;border-radius:12px;padding:13px 16px;font:inherit;font-size:14px;font-weight:600;color:#fff;background:{{ startBtnBg }};cursor:pointer">調査を開始</button>
+        </section>
+      </sc-if>
+
+      <!-- ===== Steps 2–6: topology ===== -->
+      <sc-if value="{{ showTopo }}" hint-placeholder-val="{{ false }}">
+        <section style="order:{{ layout.figOrder }};min-width:0;background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">構成図（構造化）</h2>
+            <span style="font-size:11.5px;color:#5d6773">{{ topoNote }}</span>
+            <div style="margin-left:auto;display:flex;gap:12px;font-size:11px;color:#5d6773;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#1f5fbf"></span>調査中</span>
+              <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#1f8a5b"></span>確認済</span>
+              <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#c73a2b"></span>異常</span>
+              <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#c3c9d1"></span>未確認</span>
+            </div>
+          </div>
+          <svg viewBox="0 0 900 490" style="width:100%;height:auto;display:block;font-family:'Noto Sans JP',sans-serif">
+            <defs>
+              <pattern id="nwdots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.2" fill="#dde2e9"></circle></pattern>
+              <filter id="nwsh" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#111827" flood-opacity=".16"></feDropShadow></filter>
+              <filter id="nwglow" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#1f5fbf" flood-opacity=".55"></feDropShadow></filter>
+              <filter id="nwglowred" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#c73a2b" flood-opacity=".45"></feDropShadow></filter>
+              <linearGradient id="nwzone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".9"></stop><stop offset="1" stop-color="#f3f5f9" stop-opacity=".9"></stop></linearGradient>
+            </defs>
+            <rect width="900" height="490" rx="14" fill="url(#nwdots)"></rect>
+            <g>
+              <rect x="22" y="26" width="318" height="440" rx="18" fill="url(#nwzone)" stroke="#e1e6ee"></rect>
+              <text x="40" y="52" font-size="11" font-weight="700" fill="#5d6773" letter-spacing="1.5">拠点A</text>
+              <text x="40" y="68" font-size="10" fill="#8a94a0">東京・営業所 · 10.10.1.0/24</text>
+              <rect x="362" y="26" width="238" height="440" rx="18" fill="none" stroke="#dbe1ea" stroke-dasharray="5 6"></rect>
+              <text x="380" y="52" font-size="11" font-weight="700" fill="#5d6773" letter-spacing="1.5">WAN</text>
+              <text x="380" y="68" font-size="10" fill="#8a94a0">回線事業者 · 冗長構成</text>
+              <rect x="622" y="26" width="256" height="440" rx="18" fill="url(#nwzone)" stroke="#e1e6ee"></rect>
+              <text x="640" y="52" font-size="11" font-weight="700" fill="#5d6773" letter-spacing="1.5">データセンター</text>
+              <text x="640" y="68" font-size="10" fill="#8a94a0">10.50.0.0/24</text>
+              <g transform="translate(481,150)"><path d="M -78 26 C -112 26 -112 -22 -74 -24 C -70 -58 -10 -66 10 -36 C 34 -60 92 -42 82 -6 C 112 0 106 36 70 34 Z" fill="#eef3fb" stroke="#c9d7f0" stroke-dasharray="4 4"></path><text x="0" y="62" text-anchor="middle" font-size="10" fill="#5d6773" font-weight="600">主回線 · 専用線 100M</text></g>
+              <g transform="translate(481,385)"><path d="M -78 26 C -112 26 -112 -22 -74 -24 C -70 -58 -10 -66 10 -36 C 34 -60 92 -42 82 -6 C 112 0 106 36 70 34 Z" fill="#eef3fb" stroke="#c9d7f0" stroke-dasharray="4 4"></path><text x="0" y="62" text-anchor="middle" font-size="10" fill="#5d6773" font-weight="600">予備回線 · インターネットVPN</text></g>
+            </g>
+            <sc-for list="{{ links }}" as="l" hint-placeholder-count="9">
+              <path d="{{ l.d }}" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".9"></path>
+              <path d="{{ l.d }}" fill="none" stroke="{{ l.stroke }}" stroke-width="{{ l.width }}" stroke-dasharray="{{ l.dash }}" stroke-linecap="round" style="{{ l.style }}"></path>
+              <sc-if value="{{ l.active }}" hint-placeholder-val="{{ false }}">
+                <circle r="4.5" fill="#1f5fbf" stroke="#fff" stroke-width="1.5"><animateMotion dur="1.6s" repeatCount="indefinite" path="{{ l.d }}"></animateMotion></circle>
+                <circle r="4.5" fill="#1f5fbf" stroke="#fff" stroke-width="1.5"><animateMotion dur="1.6s" begin="0.8s" repeatCount="indefinite" path="{{ l.d }}"></animateMotion></circle>
+              </sc-if>
+              <sc-if value="{{ l.down }}" hint-placeholder-val="{{ false }}">
+                <g transform="translate({{ l.mx }},{{ l.my }})"><circle r="11" fill="#fff" stroke="#c73a2b" stroke-width="2"></circle><path d="M -4.5 -4.5 L 4.5 4.5 M 4.5 -4.5 L -4.5 4.5" stroke="#c73a2b" stroke-width="2.2" stroke-linecap="round"></path></g>
+              </sc-if>
+              <sc-if value="{{ l.hasTag }}" hint-placeholder-val="{{ false }}">
+                <g transform="translate({{ l.mx }},{{ l.ty }})"><rect x="-32" y="-10" width="64" height="20" rx="10" fill="{{ l.tagBg }}" filter="url(#nwsh)"></rect>{{ l.tagText }}</g>
+              </sc-if>
+            </sc-for>
+            <sc-for list="{{ nodes }}" as="n" hint-placeholder-count="9">
+              <g transform="translate({{ n.x }},{{ n.y }})">
+                <sc-if value="{{ n.probing }}" hint-placeholder-val="{{ false }}">{{ pulse }}</sc-if>
+                <circle r="30" fill="{{ n.fill }}" stroke="{{ n.stroke }}" stroke-width="{{ n.sw }}" filter="{{ n.filter }}"></circle>
+                {{ n.icon }}
+                <sc-if value="{{ n.hasDot }}" hint-placeholder-val="{{ false }}">
+                  <circle cx="22" cy="-22" r="7.5" fill="{{ n.dot }}" stroke="#fff" stroke-width="2"></circle>{{ n.dotMark }}
+                </sc-if>
+                {{ n.labels }}
+                <sc-if value="{{ n.hasBadge }}" hint-placeholder-val="{{ false }}">
+                  <g transform="translate(0,-46)"><rect x="{{ n.badgeX }}" y="-10" width="{{ n.badgeW }}" height="20" rx="10" fill="{{ n.badgeBg }}" filter="url(#nwsh)"></rect>{{ n.badgeText }}</g>
+                </sc-if>
+              </g>
+            </sc-for>
+          </svg>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:#5d6773;border-top:1px solid #eef0f3;padding-top:10px">
+            <span>ノード 9 · リンク 9</span><span>·</span><span>図由来 7 / 実測由来 2</span><span>·</span><span>図と実態の差：{{ diffCount }}</span>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- ===== Step 2 panel: Scene Graph ===== -->
+      <sc-if value="{{ is2 }}" hint-placeholder-val="{{ false }}">
+        <section style="order:2;display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">VLM 読取結果</h2><span style="font-size:11px;color:#5d6773;font-family:'IBM Plex Mono',monospace">{{ vlmModel }}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:10px"><div style="font-size:10.5px;color:#5d6773">抽出ノード</div><div style="font-size:20px;font-weight:700;margin-top:2px">9</div></div>
+              <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:10px"><div style="font-size:10.5px;color:#5d6773">抽出リンク</div><div style="font-size:20px;font-weight:700;margin-top:2px">9</div></div>
+              <div style="background:#fdf3e7;border:1px solid rgba(185,119,14,.12);border-radius:10px;padding:10px"><div style="font-size:10.5px;color:#b9770e">確認待ち</div><div style="font-size:20px;font-weight:700;margin-top:2px;color:#b9770e">1</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ readings }}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;padding:7px 10px;border-radius:8px;background:{{ r.bg }}">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;width:74px;flex:none">{{ r.id }}</span>
+                  <span style="flex:1">{{ r.text }}</span>
+                  <span style="font-size:11px;font-weight:600;color:{{ r.color }}">{{ r.conf }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#0f1420;border-radius:16px;padding:16px 18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);display:flex;flex-direction:column;gap:8px;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12px;color:#9aa4b1;font-weight:600">Scene Graph（JSON・未修正出力）</span><span style="font-size:10.5px;color:#7f8a97">topology v3 · 図由来</span></div>
+            <pre style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.55;color:#cfe3ff;white-space:pre;overflow:auto;max-height:260px">{{ sceneJson }}</pre>
+          </div>
+          <button onClick="{{ go3 }}" style="border:0;border-radius:12px;padding:13px 16px;font:inherit;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(180deg,#3b74d9,#1f5fbf);box-shadow:0 1px 2px rgba(31,95,191,.25),0 10px 20px -10px rgba(31,95,191,.7);transition:transform .15s,box-shadow .15s;cursor:pointer" style-hover="transform:translateY(-1px);box-shadow:0 2px 4px rgba(31,95,191,.25),0 14px 24px -10px rgba(31,95,191,.7)">構成を確定して自律調査へ</button>
+        </section>
+      </sc-if>
+
+      <!-- ===== Step 3 panel: 調査 ===== -->
+      <sc-if value="{{ is3 }}" hint-placeholder-val="{{ false }}">
+        <section style="order:2;display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">仮説</h2><span style="font-size:11px;color:#5d6773">ステップ {{ probeIdx }} / 6</span></div>
+            <sc-for list="{{ hypotheses }}" as="h" hint-placeholder-count="2">
+              <div style="border:1px solid #e3e6ea;border-left:4px solid {{ h.accent }};border-radius:8px;padding:10px 12px">
+                <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6773">{{ h.id }}</span>{{ h.title }}<span style="margin-left:auto;font-size:11px;font-weight:600;color:{{ h.accent }}">{{ h.state }}</span></div>
+                <div style="font-size:12px;color:#5d6773;margin-top:4px;line-height:1.5">{{ h.note }}</div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noHyp }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:#8a94a0;padding:6px 0">まだ仮説はありません。最初の検査を実行してください。</div></sc-if>
+          </div>
+          <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:8px;min-width:0">
+            <h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">証拠（実測）</h2>
+            <sc-for list="{{ evidence }}" as="e" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:8px 0;border-bottom:1px solid #eef0f3;font-size:12px">
+                <span style="font-family:'IBM Plex Mono',monospace;color:#8a94a0;font-size:11px">{{ e.t }}</span>
+                <div style="min-width:0">
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;background:#eef3fc;color:#1f5fbf;padding:1px 7px;border-radius:5px">{{ e.tool }}</span><span style="font-weight:600">{{ e.target }}</span><span style="margin-left:auto;font-size:11px;font-weight:600;color:{{ e.color }}">{{ e.verdict }}</span></div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6773;margin-top:3px;white-space:pre-wrap;line-height:1.5">{{ e.out }}</div>
+                  <div style="margin-top:3px;color:#1b2430;line-height:1.5">{{ e.reason }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noEv }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:#8a94a0;padding:6px 0">証拠はまだありません。</div></sc-if>
+          </div>
+          <sc-if value="{{ moreProbes }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12px;color:#5d6773;background:#eef3fb;border-radius:8px;padding:9px 12px;line-height:1.5"><span style="font-weight:600;color:#1f5fbf">次の調査：</span>{{ nextProbeText }}</div>
+              <button onClick="{{ runProbe }}" style="border:0;border-radius:12px;padding:13px 16px;font:inherit;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(180deg,#3b74d9,#1f5fbf);box-shadow:0 1px 2px rgba(31,95,191,.25),0 10px 20px -10px rgba(31,95,191,.7);transition:transform .15s,box-shadow .15s;cursor:pointer" style-hover="transform:translateY(-1px);box-shadow:0 2px 4px rgba(31,95,191,.25),0 14px 24px -10px rgba(31,95,191,.7)">次の検査を実行</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ probesDone }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ go4 }}" style="border:0;border-radius:12px;padding:13px 16px;font:inherit;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(180deg,#3b74d9,#1f5fbf);box-shadow:0 1px 2px rgba(31,95,191,.25),0 10px 20px -10px rgba(31,95,191,.7);transition:transform .15s,box-shadow .15s;cursor:pointer" style-hover="transform:translateY(-1px);box-shadow:0 2px 4px rgba(31,95,191,.25),0 14px 24px -10px rgba(31,95,191,.7)">根本原因を確定し復旧案へ</button>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <!-- ===== Step 4 panel: 原因と承認 ===== -->
+      <sc-if value="{{ is4 }}" hint-placeholder-val="{{ false }}">
+        <section style="order:2;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;min-width:0">
+          <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px">
+            <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+              <h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">根本原因（複合障害）</h2>
+              <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:#fbeeec;border:1px solid rgba(199,58,43,.12);border-radius:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#c73a2b;font-weight:600;flex:none">要因A</span><div style="font-size:12.5px;line-height:1.55"><b>主回線リンク断</b>（RT-MAIN Gi0/0 down）。冗長化制御により予備経路へ切替済み。<span style="color:#5d6773">証拠 EV-02, EV-03</span></div></div>
+              <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:#fbeeec;border:1px solid rgba(199,58,43,.12);border-radius:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#c73a2b;font-weight:600;flex:none">要因B</span><div style="font-size:12.5px;line-height:1.55"><b>予備ルータ ACL 110 が受注サービス向け HTTPS を遮断</b>。切替後も業務が再開しない直接原因。<span style="color:#5d6773">証拠 EV-04, EV-05</span></div></div>
+            </div>
+            <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:10px;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">変更計画</h2><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6773">PLAN-0042-v2 · a91f3c</span></div>
+              <div style="font-size:12px;color:#5d6773">対象：RT-BKUP · 転送ACL 110 · 方向 in（拠点→サービス）</div>
+              <div style="margin:0;background:#0f1420;border-radius:10px;padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.6;color:#cfd5dd;overflow:auto;white-space:pre"><div style="color:#8a94a0">ip access-list extended 110</div><div style="color:#ff8a7a">- 30 deny   tcp 10.10.0.0 0.0.255.255 host 10.50.0.20 eq 443</div><div style="color:#7fe0a5">+ 30 permit tcp 10.10.1.0 0.0.0.255 host 10.50.0.20 eq 443</div><div style="color:#8a94a0">  40 deny   tcp any any eq 23   (禁止通信・維持)</div></div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:12px">
+                <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:9px 11px"><div style="color:#5d6773;font-size:10.5px">影響</div><div style="margin-top:2px">拠点A→受注サービスの443のみ</div></div>
+                <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:9px 11px"><div style="color:#5d6773;font-size:10.5px">復元</div><div style="margin-top:2px">元ルール30を再投入（登録済）</div></div>
+                <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:9px 11px"><div style="color:#5d6773;font-size:10.5px">観測前提の鮮度</div><div style="margin-top:2px">30秒以内に再観測</div></div>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">事前検証（検証用環境）</h2><span style="font-size:11px;color:#1f8a5b;font-weight:600">複製一致 ✓</span></div>
+              <sc-for list="{{ prechecks }}" as="p" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;padding:6px 0;border-bottom:1px solid #eef0f3"><span style="width:18px;height:18px;border-radius:50%;background:{{ p.bg }};color:#fff;display:grid;place-items:center;font-size:11px;flex:none">{{ p.mark }}</span><span style="flex:1">{{ p.name }}</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6773">{{ p.val }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <!-- iPad panel -->
+          <div style="width:300px;flex:none;background:#0f1420;border-radius:32px;padding:11px;box-shadow:0 34px 60px -24px rgba(15,20,32,.5),inset 0 0 0 1px rgba(255,255,255,.1)">
+            <div style="background:linear-gradient(180deg,#fbfbfd,#f2f4f7);border-radius:23px;min-height:560px;display:flex;flex-direction:column;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;padding:8px 16px 0;font-size:10.5px;color:#5d6773;font-weight:600"><span>10:07</span><span>iPad · 承認端末</span></div>
+              <div style="padding:14px 16px 6px"><div style="font-size:10.5px;color:#5d6773">変更承認</div><div style="font-size:15px;font-weight:700;margin-top:2px">INC-2026-0042 · 拠点A</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#5d6773;margin-top:2px">PLAN-0042-v2 · 有効期限 5:00</div></div>
+              <div style="padding:0 16px;display:flex;flex-direction:column;gap:8px;font-size:12px">
+                <div style="background:#fff;border-radius:12px;padding:10px 12px;border:1px solid rgba(17,24,39,.06);box-shadow:0 1px 2px rgba(17,24,39,.04)"><div style="color:#5d6773;font-size:10.5px">変更内容</div><div style="margin-top:2px;line-height:1.5">RT-BKUP ACL 110 ルール30：拠点A→受注サービス HTTPS を許可</div></div>
+                <div style="background:#fff;border-radius:12px;padding:10px 12px;border:1px solid rgba(17,24,39,.06);box-shadow:0 1px 2px rgba(17,24,39,.04)"><div style="color:#5d6773;font-size:10.5px">想定影響</div><div style="margin-top:2px;line-height:1.5">受注業務の再開。他ポート・他拠点の遮断は維持</div></div>
+                <div style="background:#fff;border-radius:12px;padding:10px 12px;border:1px solid rgba(17,24,39,.06);box-shadow:0 1px 2px rgba(17,24,39,.04)"><div style="color:#5d6773;font-size:10.5px">事前検証</div><div style="margin-top:2px;line-height:1.5;color:#1f8a5b;font-weight:600">業務テスト 3/3 · 禁止通信 遮断維持 · 合格</div></div>
+                <div style="background:#fff;border-radius:12px;padding:10px 12px;border:1px solid rgba(17,24,39,.06);box-shadow:0 1px 2px rgba(17,24,39,.04)"><div style="color:#5d6773;font-size:10.5px">失敗時の復元</div><div style="margin-top:2px;line-height:1.5">元ルールを自動再投入・再検証</div></div>
+              </div>
+              <div style="margin-top:auto;padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:11px;color:#5d6773;display:flex;justify-content:space-between"><span>承認者：田中（変更承認権限）</span><span style="font-weight:600;color:{{ appr.color }}">{{ appr.label }}</span></div>
+                <sc-if value="{{ apprPending }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ approve }}" style="border:0;border-radius:13px;padding:13px;font:inherit;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(180deg,#2aa06c,#1f8a5b);box-shadow:0 1px 2px rgba(31,138,91,.25),0 10px 20px -10px rgba(31,138,91,.7);transition:transform .15s,box-shadow .15s;cursor:pointer" style-hover="transform:translateY(-1px)">承認して適用へ</button>
+                  <div style="display:flex;gap:8px">
+                    <button onClick="{{ hold }}" style="flex:1;border:1px solid #d6dbe1;border-radius:11px;padding:10px;font:inherit;font-size:13px;font-weight:600;color:#1b2430;background:#fff;cursor:pointer">保留</button>
+                    <button onClick="{{ reject }}" style="flex:1;border:1px solid #d6dbe1;border-radius:11px;padding:10px;font:inherit;font-size:13px;font-weight:600;color:#c73a2b;background:#fff;cursor:pointer">却下</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ apprApproved }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:#e6f4ec;border-radius:11px;padding:12px;font-size:12.5px;color:#1f8a5b;font-weight:600;text-align:center">承認済み · 10:07:42 · Macへ同期</div>
+                  <button onClick="{{ go5 }}" style="border:0;border-radius:13px;padding:13px;font:inherit;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(180deg,#3b74d9,#1f5fbf);box-shadow:0 1px 2px rgba(31,95,191,.25),0 10px 20px -10px rgba(31,95,191,.7);transition:transform .15s,box-shadow .15s;cursor:pointer" style-hover="transform:translateY(-1px);box-shadow:0 2px 4px rgba(31,95,191,.25),0 14px 24px -10px rgba(31,95,191,.7)">自動復旧を開始</button>
+                </sc-if>
+                <sc-if value="{{ apprRejected }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:#fbeeec;border-radius:11px;padding:12px;font-size:12.5px;color:#c73a2b;font-weight:600;text-align:center">却下 · 対象環境は変更されません</div>
+                  <button onClick="{{ resetAppr }}" style="border:1px solid #d6dbe1;border-radius:11px;padding:10px;font:inherit;font-size:13px;font-weight:600;background:#fff;cursor:pointer">承認待ちへ戻す</button>
+                </sc-if>
+                <sc-if value="{{ apprHold }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:#fdf3e7;border-radius:11px;padding:12px;font-size:12.5px;color:#b9770e;font-weight:600;text-align:center">保留中 · 案件は NEEDS_HUMAN</div>
+                  <button onClick="{{ resetAppr }}" style="border:1px solid #d6dbe1;border-radius:11px;padding:10px;font:inherit;font-size:13px;font-weight:600;background:#fff;cursor:pointer">承認待ちへ戻す</button>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- ===== Step 5 panel: 自動復旧 ===== -->
+      <sc-if value="{{ is5 }}" hint-placeholder-val="{{ false }}">
+        <section style="order:2;display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">承認された差分のみ適用</h2><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6773">EXEC-7f21 · 冪等キー 9c0e</span></div>
+            <sc-for list="{{ applySteps }}" as="a" hint-placeholder-count="5">
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:9px 0;border-bottom:1px solid #eef0f3">
+                <span style="width:22px;height:22px;border-radius:50%;background:{{ a.bg }};color:#fff;display:grid;place-items:center;font-size:12px;flex:none;margin-top:1px">{{ a.mark }}</span>
+                <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:{{ a.color }}">{{ a.name }}</div><div style="font-size:11.5px;color:#5d6773;margin-top:2px;font-family:'IBM Plex Mono',monospace">{{ a.detail }}</div></div>
+                <span style="font-size:11px;color:#8a94a0;font-family:'IBM Plex Mono',monospace">{{ a.time }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ applyNotStarted }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ startApply }}" style="border:0;border-radius:12px;padding:13px 16px;font:inherit;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(180deg,#3b74d9,#1f5fbf);box-shadow:0 1px 2px rgba(31,95,191,.25),0 10px 20px -10px rgba(31,95,191,.7);transition:transform .15s,box-shadow .15s;cursor:pointer" style-hover="transform:translateY(-1px);box-shadow:0 2px 4px rgba(31,95,191,.25),0 14px 24px -10px rgba(31,95,191,.7)">適用を実行（承認 APR-311 を照合）</button>
+          </sc-if>
+          <sc-if value="{{ applyRunning }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#1f5fbf;font-weight:600;padding:4px 2px">{{ spinner }}適用中… 対象をロックし、前提を再観測しています</div>
+          </sc-if>
+          <sc-if value="{{ applyDone }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ go6 }}" style="border:0;border-radius:12px;padding:13px 16px;font:inherit;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(180deg,#2aa06c,#1f8a5b);box-shadow:0 1px 2px rgba(31,138,91,.25),0 10px 20px -10px rgba(31,138,91,.7);transition:transform .15s,box-shadow .15s;cursor:pointer" style-hover="transform:translateY(-1px)">復旧確認試験へ</button>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <!-- ===== Step 6 panel: 復旧確認 ===== -->
+      <sc-if value="{{ is6 }}" hint-placeholder-val="{{ false }}">
+        <section style="order:2;display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">復旧確認試験（独立検証器）</h2><span style="font-size:11px;color:#5d6773">利用者と同じ経路 · PC-01 → APP-01</span></div>
+            <sc-for list="{{ verifyTests }}" as="v" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #eef0f3">
+                <span style="width:22px;height:22px;border-radius:50%;background:{{ v.bg }};color:#fff;display:grid;place-items:center;font-size:12px;flex:none">{{ v.mark }}</span>
+                <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">{{ v.name }}</div><div style="font-size:11.5px;color:#5d6773;font-family:'IBM Plex Mono',monospace;margin-top:2px">{{ v.detail }}</div></div>
+                <span style="font-size:11px;font-weight:600;color:{{ v.color }}">{{ v.verdict }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ verifyNotStarted }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ startVerify }}" style="border:0;border-radius:12px;padding:13px 16px;font:inherit;font-size:14px;font-weight:600;color:#fff;background:#1f5fbf;cursor:pointer;margin-top:4px">業務テストを実行</button>
+            </sc-if>
+            <sc-if value="{{ verifyRunning }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#1f5fbf;font-weight:600;padding:8px 2px 2px">{{ spinner }}検証中…</div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ verifyDone }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#e6f4ec;border:1px solid #bfe3cf;border-radius:12px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start">
+              <span style="width:28px;height:28px;border-radius:50%;background:#1f8a5b;color:#fff;display:grid;place-items:center;font-size:15px;flex:none">✓</span>
+              <div><div style="font-size:14px;font-weight:700;color:#1f8a5b">業務復旧 · 主回線の対応は継続</div><div style="font-size:12.5px;color:#1b2430;margin-top:3px;line-height:1.55">受注業務は予備経路で再開しました。状態は <span style="font-family:'IBM Plex Mono',monospace">SERVICE_RESTORED</span>。完全解決ではありません。</div></div>
+            </div>
+            <div style="background:#fff;border:1px solid rgba(17,24,39,.06);border-radius:16px;box-shadow:0 1px 2px rgba(17,24,39,.04),0 12px 28px -16px rgba(17,24,39,.14);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+              <h2 style="margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em">残存課題・引き継ぎ</h2>
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 12px;background:#fdf3e7;border:1px solid rgba(185,119,14,.12);border-radius:10px;font-size:12.5px;line-height:1.55"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#b9770e;font-weight:600;flex:none">残存A</span><div><b>主回線リンク断</b>（RT-MAIN Gi0/0）。物理断の可能性。担当候補：回線事業者（未確認）</div></div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;font-size:12px">
+                <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:9px 11px"><div style="color:#5d6773;font-size:10.5px">引き継ぎ状態</div><div style="margin-top:2px;font-weight:600">依頼準備済み</div></div>
+                <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:9px 11px"><div style="color:#5d6773;font-size:10.5px">添付証拠</div><div style="margin-top:2px">EV-02, EV-03, 業務テスト結果</div></div>
+                <div style="background:#f6f7f9;border:1px solid rgba(17,24,39,.05);border-radius:10px;padding:9px 11px"><div style="color:#5d6773;font-size:10.5px">再入力</div><div style="margin-top:2px">不要（同一案件を参照）</div></div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button style="border:0;border-radius:9px;padding:10px 16px;font:inherit;font-size:13px;font-weight:600;color:#fff;background:#1b2430;cursor:pointer">引き継ぎ文書を生成</button>
+                <button onClick="{{ restart }}" style="border:1px solid #d6dbe1;border-radius:9px;padding:10px 16px;font:inherit;font-size:13px;font-weight:600;background:#fff;cursor:pointer">デモを最初から</button>
+              </div>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <!-- Tech details strip -->
+      <sc-if value="{{ showTech }}" hint-placeholder-val="{{ false }}">
+        <div style="order:9;grid-column:1/-1;display:flex;gap:18px;flex-wrap:wrap;font-size:11px;color:#5d6773;font-family:'IBM Plex Mono',monospace;background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:10px 16px">
+          <span>trace: {{ traceId }}</span><span>local: DGX Spark · qwen2.5-vl-32b</span><span>router: OrcaRouter · 方式B（段階別）</span><span>calls {{ calls }} · tokens {{ tokens }} · ¥{{ cost }}</span><span>data_class: local_only</span>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;layout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;図中央・右パネル&quot;,&quot;options&quot;:[&quot;図中央・右パネル&quot;,&quot;図ワイド・下パネル&quot;,&quot;パネル左・図右&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;レイアウト案&quot;},&quot;showTechDetails&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;表示&quot;}}">
+class Component extends DCLogic {
+  state = { step: 1, uploaded: false, probeIdx: 0, appr: 'pending', applyIdx: -1, verifyIdx: -1 };
+  timers = [];
+  componentWillUnmount() { this.timers.forEach(clearTimeout); }
+  later(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
+  go(n) {
+    this.setState(s => {
+      const st = { step: n };
+      if (n >= 2) st.uploaded = true;
+      if (n >= 4) st.probeIdx = 6;
+      if (n >= 5 && s.appr !== 'approved') st.appr = 'approved';
+      if (n >= 6 && s.applyIdx < 5) st.applyIdx = 5;
+      if (n < 5) { st.applyIdx = -1; }
+      if (n < 6) { st.verifyIdx = -1; }
+      if (n < 4) { st.appr = 'pending'; }
+      if (n < 3) { st.probeIdx = 0; }
+      return st;
+    });
+  }
+  runApply() {
+    const tick = i => { this.setState({ applyIdx: i }); if (i < 5) this.later(() => tick(i + 1), 900); };
+    tick(0);
+  }
+  runVerify() {
+    const tick = i => { this.setState({ verifyIdx: i }); if (i < 4) this.later(() => tick(i + 1), 800); };
+    tick(0);
+  }
+  renderVals() {
+    const { step, uploaded, probeIdx, appr, applyIdx, verifyIdx } = this.state;
+    const layoutName = this.props.layout ?? '図中央・右パネル';
+    const showTech = this.props.showTechDetails ?? false;
+    const layouts = {
+      '図中央・右パネル': { cols: 'repeat(auto-fit,minmax(min(100%,500px),1fr))', figOrder: 1 },
+      '図ワイド・下パネル': { cols: 'minmax(0,1fr)', figOrder: 1 },
+      'パネル左・図右': { cols: 'repeat(auto-fit,minmax(min(100%,500px),1fr))', figOrder: 3 },
+    };
+    const layout = layouts[layoutName] || layouts['図中央・右パネル'];
+    const C = { blue: '#1f5fbf', green: '#1f8a5b', red: '#c73a2b', gray: '#c3c9d1', amber: '#b9770e', ink: '#1b2430' };
+
+    const stepNames = ['受付・構成図', '構成理解（Scene Graph）', '自律調査', '原因提示・承認', '自動復旧', '復旧確認・引き継ぎ'];
+    const steps = stepNames.map((name, i) => {
+      const n = i + 1, done = n < step, cur = n === step;
+      return { num: done ? '✓' : String(n), name, go: () => this.go(n),
+        status: done ? '完了' : cur ? '進行中' : '',
+        bg: cur ? 'rgba(255,255,255,.1)' : 'transparent', color: cur || done ? '#fff' : '#9aa4b1',
+        numBg: done ? C.green : cur ? C.blue : 'rgba(255,255,255,.1)', numColor: done || cur ? '#fff' : '#9aa4b1' };
+    });
+
+    // state machine + business
+    const verifyDone = verifyIdx >= 4;
+    const smCodes = { 1: 'RECEIVED', 2: 'INVESTIGATING', 3: 'INVESTIGATING', 4: appr === 'approved' ? 'APPROVED' : appr === 'hold' ? 'NEEDS_HUMAN' : appr === 'rejected' ? 'INVESTIGATING' : 'AWAITING_APPROVAL', 5: applyIdx >= 5 ? 'APPLIED' : applyIdx >= 0 ? 'APPLYING' : 'APPROVED', 6: verifyDone ? 'SERVICE_RESTORED' : 'VERIFYING' };
+    const smCode = smCodes[step];
+    const sm = { code: smCode, dot: smCode === 'SERVICE_RESTORED' ? C.green : smCode === 'NEEDS_HUMAN' ? C.amber : C.blue };
+    const biz = verifyDone ? { label: '暫定復旧（予備経路）', bg: '#e6f4ec', fg: C.green } : step === 1 && !uploaded ? { label: '申告中', bg: '#f4f6f9', fg: '#5d6773' } : { label: '不通 · 受注業務', bg: '#fbeeec', fg: C.red };
+    const headlines = { 1: uploaded ? '構成図を受け取りました。症状を確認して調査を開始します' : '構成図のアップロードと症状の申告', 2: 'VLMが構成図を構造化し、登録機器と照合しています', 3: probeIdx >= 6 ? '複合障害を特定。証拠を整理しています' : probeIdx === 0 ? '許可範囲のツールで横断切り分けを開始' : ['業務通信の到達性を検査', '拠点GWの経路を確認', '主回線ルータの状態を確認', '予備経路経由の通信を検査', '予備ルータのACLを照合', 'DCファイアウォールのログを確認'][probeIdx - 1], 4: '修正案を提示し、承認を待っています', 5: applyIdx >= 5 ? '適用完了。復旧確認へ進めます' : applyIdx >= 0 ? '承認された差分を適用中' : '承認を照合し、適用準備中', 6: verifyDone ? '業務復旧を確認。残存課題を引き継ぎます' : '独立検証器で業務テストを実行' };
+    const elapsedMap = { 1: '00:00', 2: '00:14', 3: ['00:22', '00:31', '00:38', '00:46', '00:55', '01:04', '01:12'][probeIdx], 4: '01:20', 5: '01:41', 6: verifyDone ? '02:03' : '01:52' };
+
+    // topology
+    const P = { 'PC-01': [90, 150], 'AP-01': [90, 370], 'SW-01': [195, 260], 'GW-01': [295, 260], 'RT-MAIN': [481, 150], 'RT-BKUP': [481, 385], 'FW-01': [690, 260], 'DNS-01': [818, 150], 'APP-01': [818, 385] };
+    const base = [
+      ['PC-01', 'PC', '業務端末'], ['AP-01', 'AP', '無線AP'], ['SW-01', 'SW', '拠点スイッチ'], ['GW-01', 'GW', '拠点ゲートウェイ'],
+      ['RT-MAIN', 'RT', '主回線ルータ'], ['RT-BKUP', 'RT', '予備回線ルータ'], ['FW-01', 'FW', 'DC ファイアウォール'], ['DNS-01', 'DNS', '名前解決'], ['APP-01', 'SRV', '受注サービス'],
+    ];
+    const linkDefs = [['PC-01', 'SW-01'], ['AP-01', 'SW-01'], ['SW-01', 'GW-01'], ['GW-01', 'RT-MAIN'], ['GW-01', 'RT-BKUP'], ['RT-MAIN', 'FW-01'], ['RT-BKUP', 'FW-01'], ['FW-01', 'DNS-01'], ['FW-01', 'APP-01']];
+    // status maps per phase
+    const ns = {}; const ls = {}; const badges = {}; const tags = {};
+    const set = (id, s) => { ns[id] = s; };
+    const probing = [];
+    if (step === 2) { base.forEach(b => set(b[0], 'ok')); set('DNS-01', 'unknown'); badges['DNS-01'] = ['確認待ち', C.amber]; }
+    if (step >= 3) {
+      base.forEach(b => set(b[0], 'unknown'));
+      const seq = [
+        () => { probing.push('PC-01', 'APP-01'); },
+        () => { set('PC-01', 'ok'); set('APP-01', 'unknown'); probing.push('GW-01'); },
+        () => { set('GW-01', 'ok'); set('SW-01', 'ok'); ls['GW-01|RT-BKUP'] = 'active'; probing.push('RT-MAIN'); },
+        () => { set('RT-MAIN', 'bad'); ls['GW-01|RT-MAIN'] = 'down'; badges['RT-MAIN'] = ['異常', C.red]; tags['GW-01|RT-MAIN'] = ['リンク断', C.red]; probing.push('RT-BKUP', 'APP-01'); },
+        () => { set('APP-01', 'ok'); set('FW-01', 'ok'); probing.push('RT-BKUP'); },
+        () => { set('RT-BKUP', 'bad'); badges['RT-BKUP'] = ['ACL異常', C.red]; tags['RT-BKUP|FW-01'] = ['443遮断', C.red]; probing.push('FW-01'); },
+        () => { set('DNS-01', 'ok'); set('AP-01', 'ok'); },
+      ];
+      const upto = step === 3 ? probeIdx : 6;
+      for (let i = 0; i <= upto; i++) seq[i]();
+      if (step > 3) { probing.length = 0; }
+      if (step >= 5 && applyIdx >= 3) { set('RT-BKUP', 'fixed'); badges['RT-BKUP'] = ['修正済', C.green]; tags['RT-BKUP|FW-01'] = ['443許可', C.green]; }
+      if (step === 5 && applyIdx >= 0 && applyIdx < 3) probing.push('RT-BKUP');
+      if (step === 6 && verifyIdx >= 0 && !verifyDone) { probing.push('PC-01', 'APP-01'); ls['GW-01|RT-BKUP'] = 'active'; ls['RT-BKUP|FW-01'] = 'active'; ls['FW-01|APP-01'] = 'active'; ls['SW-01|GW-01'] = 'active'; ls['PC-01|SW-01'] = 'active'; }
+      if (verifyDone) { ['GW-01|RT-BKUP', 'RT-BKUP|FW-01', 'FW-01|APP-01', 'SW-01|GW-01', 'PC-01|SW-01'].forEach(k => ls[k] = 'ok'); badges['APP-01'] = ['業務OK', C.green]; badges['RT-MAIN'] = ['残存課題', C.amber]; }
+    }
+    const T = (txt, attrs) => React.createElement('text', { textAnchor: 'middle', ...attrs }, txt);
+    const nodeStyle = s => s === 'bad' ? { fill: '#fbeeec', stroke: C.red, sw: 2, iconColor: C.red, idColor: C.red }
+      : s === 'ok' || s === 'fixed' ? { fill: '#e6f4ec', stroke: C.green, sw: 1.5, iconColor: C.green, idColor: '#1b2430' }
+      : { fill: '#fff', stroke: C.gray, sw: 1.5, iconColor: '#8a94a0', idColor: '#5d6773' };
+    const E = React.createElement;
+    const icons = {
+      PC: c => E('g', { stroke: c, fill: 'none', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' }, E('rect', { x: -12, y: -10, width: 24, height: 15, rx: 2.5 }), E('path', { d: 'M -6 11 H 6 M 0 5 V 11' })),
+      AP: c => E('g', { stroke: c, fill: 'none', strokeWidth: 1.9, strokeLinecap: 'round' }, E('circle', { cx: 0, cy: 6, r: 2.4, fill: c }), E('path', { d: 'M -7 0 A 10 10 0 0 1 7 0 M -12 -6 A 17 17 0 0 1 12 -6' })),
+      SW: c => E('g', { stroke: c, fill: 'none', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' }, E('rect', { x: -13, y: -7, width: 26, height: 14, rx: 3 }), E('path', { d: 'M -8 -2 L -5 -2 M -8 2 L -5 2 M -1 -2 L 2 -2 M -1 2 L 2 2 M 6 -2 L 9 -2 M 6 2 L 9 2' })),
+      RT: c => E('g', { stroke: c, fill: 'none', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' }, E('circle', { r: 12.5 }), E('path', { d: 'M -8 -3 H 4 M 1 -6 L 4 -3 L 1 0 M 8 3 H -4 M -1 0 L -4 3 L -1 6' })),
+      FW: c => E('g', { stroke: c, fill: 'none', strokeWidth: 1.9, strokeLinejoin: 'round' }, E('rect', { x: -13, y: -10, width: 26, height: 20, rx: 2 }), E('path', { d: 'M -13 -3.5 H 13 M -13 3.5 H 13 M -4 -10 V -3.5 M 4 -3.5 V 3.5 M -4 3.5 V 10' })),
+      DNS: c => E('g', { stroke: c, fill: 'none', strokeWidth: 1.9 }, E('circle', { r: 11 }), E('ellipse', { rx: 4.5, ry: 11 }), E('path', { d: 'M -11 0 H 11 M -9 -6 H 9 M -9 6 H 9' })),
+      GW: c => E('g', { stroke: c, fill: 'none', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' }, E('rect', { x: -13, y: -8, width: 26, height: 16, rx: 3 }), E('path', { d: 'M -7 0 H 7 M 3 -4 L 7 0 L 3 4 M -13 -8 L -8 -14 H 8 L 13 -8' })),
+      SRV: c => E('g', { stroke: c, fill: 'none', strokeWidth: 1.9, strokeLinejoin: 'round' }, E('rect', { x: -11, y: -12, width: 22, height: 9, rx: 2 }), E('rect', { x: -11, y: 3, width: 22, height: 9, rx: 2 }), E('circle', { cx: -6, cy: -7.5, r: 1.3, fill: c }), E('circle', { cx: -6, cy: 7.5, r: 1.3, fill: c })),
+    };
+    const nodes = base.map(([id, kind, name]) => {
+      const st = ns[id] || 'unknown'; const isP = probing.includes(id);
+      const sty = nodeStyle(st); if (isP) { sty.stroke = C.blue; sty.sw = 2.5; sty.iconColor = C.blue; }
+      const b = badges[id]; const bw = b ? b[0].length * 10.5 + 16 : 0;
+      const labels = E(React.Fragment, null,
+        T(name, { key: 'n', y: 48, fontSize: 11.5, fill: '#1b2430', fontWeight: 600 }),
+        T(id, { key: 'i', y: 62, fontSize: 9.5, fill: '#8a94a0', fontFamily: "'IBM Plex Mono',monospace" }));
+      const badgeText = b ? T(b[0], { y: 4, fontSize: 10, fontWeight: 600, fill: '#fff' }) : null;
+      const dot = st === 'bad' ? C.red : (st === 'ok' || st === 'fixed') ? C.green : null;
+      const dotMark = dot ? E('path', { d: st === 'bad' ? 'M 22 -25 V -21 M 22 -18.5 V -18' : 'M 18.5 -22 L 21 -19.5 L 25.5 -25', stroke: '#fff', strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }) : null;
+      return { id, name, x: P[id][0], y: P[id][1], probing: isP, hasBadge: !!b, badgeBg: b ? b[1] : '', badgeW: bw, badgeX: -bw / 2, labels, badgeText,
+        icon: (icons[kind] || icons.RT)(sty.iconColor), hasDot: !!dot, dot, dotMark,
+        filter: isP ? 'url(#nwglow)' : st === 'bad' ? 'url(#nwglowred)' : 'url(#nwsh)', ...sty };
+    });
+    const links = linkDefs.map(([a, b]) => {
+      const k = a + '|' + b; const s = ls[k] || 'plain'; const t = tags[k];
+      const [x1, y1] = P[a], [x2, y2] = P[b];
+      const cx = (x1 + x2) / 2;
+      const d = `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`;
+      return { d, mx: cx, my: (y1 + y2) / 2, ty: (y1 + y2) / 2 - (t && s === 'down' ? 26 : 16),
+        active: s === 'active', down: s === 'down',
+        stroke: s === 'down' ? C.red : s === 'active' ? C.blue : s === 'ok' ? C.green : '#c3c9d1',
+        width: s === 'plain' ? 2.5 : 3.5, dash: s === 'down' ? '7 7' : 'none',
+        style: '', hasTag: !!t, tagBg: t ? t[1] : '',
+        tagText: t ? T(t[0], { y: 4, fontSize: 10, fontWeight: 600, fill: '#fff' }) : null };
+    });
+    const pulse = React.createElement('circle', { r: 30, fill: 'none', stroke: C.blue, strokeWidth: 2.5, style: { animation: 'nwpulse 1.4s ease-out infinite' } });
+    const spinner = React.createElement('span', { style: { width: 14, height: 14, border: '2px solid #cfe0f7', borderTopColor: C.blue, borderRadius: '50%', display: 'inline-block', animation: 'nwspin .8s linear infinite' } });
+
+    // step 2
+    const readings = [
+      { id: 'RT-MAIN', text: '主回線ルータ · GW-01と接続', conf: '0.97', color: C.green, bg: '#f8f9fb' },
+      { id: 'RT-BKUP', text: '予備回線ルータ · GW-01と接続', conf: '0.95', color: C.green, bg: '#f8f9fb' },
+      { id: 'APP-01', text: '受注サービス · 10.50.0.20', conf: '0.93', color: C.green, bg: '#f8f9fb' },
+      { id: 'DNS-01', text: '識別子が不鮮明 → 管理者確認待ち（実測で補完）', conf: '0.61', color: C.amber, bg: '#fdf3e7' },
+    ];
+    const sceneJson = `{
+  "topology_version": "v3",
+  "source": "diagram",
+  "nodes": [
+    { "id": "PC-01",   "type": "client",   "role": "業務端末",     "zone": "site-A" },
+    { "id": "GW-01",   "type": "gateway",  "role": "拠点GW",       "zone": "site-A" },
+    { "id": "RT-MAIN", "type": "router",   "role": "主回線",       "zone": "wan" },
+    { "id": "RT-BKUP", "type": "router",   "role": "予備回線",     "zone": "wan" },
+    { "id": "FW-01",   "type": "firewall", "role": "DC FW",        "zone": "dc" },
+    { "id": "APP-01",  "type": "service",  "role": "受注サービス", "addr": "10.50.0.20:443" },
+    { "id": "DNS-01",  "type": "dns",      "confidence": 0.61, "needs_review": true }
+  ],
+  "links": [
+    { "from": "GW-01",   "to": "RT-MAIN", "kind": "primary" },
+    { "from": "GW-01",   "to": "RT-BKUP", "kind": "backup" },
+    { "from": "RT-MAIN", "to": "FW-01" },
+    { "from": "RT-BKUP", "to": "FW-01" },
+    { "from": "FW-01",   "to": "APP-01" }
+  ],
+  "business_path": ["PC-01", "SW-01", "GW-01", "RT-MAIN", "FW-01", "APP-01"]
+}`;
+
+    // step 3 probes
+    const probes = [
+      { t: '00:22', tool: 'probe_path', target: 'PC-01 → APP-01 · HTTPS', verdict: '失敗', color: C.red, out: 'GET https://order.example.local/ → timeout (10s)\nDNS ok 10.50.0.20 · ICMP ok 12ms · TCP:443 no SYN-ACK', reason: '名前解決とICMPは成功。TCP 443のみ失敗 → 経路上のフィルタか経路異常を疑う', next: '拠点GWの経路テーブルを確認し、どの回線を使っているか特定する' },
+      { t: '00:31', tool: 'observe_node', target: 'GW-01 · 経路', verdict: '注意', color: C.amber, out: 'default via 10.0.2.1 (RT-BKUP)  metric 20\n# primary 10.0.1.1 (RT-MAIN) 経路が消えている', reason: '通常は主回線経由のはず。予備へ切り替わっている → 主回線側の状態を確認', next: '主回線ルータ RT-MAIN のインターフェース状態を確認する' },
+      { t: '00:38', tool: 'observe_node', target: 'RT-MAIN · インターフェース', verdict: '異常', color: C.red, out: 'Gi0/0  line protocol down  (last up 09:38:12)\nGi0/1  up', reason: '主回線リンク断を確認。仮説H1を支持。ただし予備へ切替済みなら業務は通るはず → 未復旧を説明できない', next: '予備経路経由で業務通信が通るかを検査する' },
+      { t: '00:46', tool: 'probe_path', target: 'PC-01 → APP-01 · via RT-BKUP', verdict: '失敗', color: C.red, out: 'traceroute: GW-01 → RT-BKUP → * * *\nTCP:443 no response · TCP:22 (禁止) filtered', reason: '予備経路上で443が止まっている。RT-BKUP のフィルタを疑う → 仮説H2を追加', next: '予備ルータ RT-BKUP の転送ACLを照合する' },
+      { t: '00:55', tool: 'observe_node', target: 'RT-BKUP · ACL 110', verdict: '異常', color: C.red, out: 'ip access-list extended 110\n 30 deny tcp 10.10.0.0 0.0.255.255 host 10.50.0.20 eq 443  (matches: 1,284)\n 40 deny tcp any any eq 23', reason: 'ルール30が拠点→受注サービスのHTTPSを遮断。カウンタ増加中 → H2を支持', next: 'DC側FWのログで拠点からのセッションが到達していないことを確認する（反証の確認）' },
+      { t: '01:04', tool: 'query_evidence', target: 'FW-01 · セッションログ', verdict: '確認', color: C.green, out: 'sessions from 10.10.1.0/24 to 10.50.0.20:443 since 09:38 → 0\nsessions from other sites → normal', reason: 'FW・サービス側に異常なし。原因はRT-BKUPのACLに限定される。H2の反証なし', next: '' },
+    ];
+    const evidence = probes.slice(0, probeIdx).map((p, i) => ({ ...p, target: `EV-0${i + 1} · ${p.target}` })).reverse();
+    const hypotheses = [];
+    if (probeIdx >= 3) hypotheses.push({ id: 'H1', title: '主回線リンク断', accent: C.red, state: probeIdx >= 4 ? '支持・ただし単独では説明不足' : '支持', note: probeIdx >= 4 ? 'RT-MAIN Gi0/0 down。切替後も業務が再開しないため、第二の要因が存在する' : 'RT-MAIN Gi0/0 down を実測で確認' });
+    else if (probeIdx >= 1) hypotheses.push({ id: 'H1', title: '経路またはフィルタの異常', accent: C.amber, state: '調査中', note: 'DNS/ICMPは成功、TCP 443のみ失敗' });
+    if (probeIdx >= 4) hypotheses.push({ id: 'H2', title: '予備経路でHTTPSが遮断されている', accent: probeIdx >= 5 ? C.red : C.amber, state: probeIdx >= 6 ? '確定（反証なし）' : probeIdx >= 5 ? '支持' : '調査中', note: probeIdx >= 5 ? 'RT-BKUP ACL 110 ルール30が10.50.0.20:443をdeny' : '予備経路上で443が無応答。ACLを照合中' });
+
+    const prechecks = [
+      { name: '複製環境と対象環境の一致（設定・リンク・サービス）', val: '32/32 項目', mark: '✓', bg: C.green },
+      { name: '業務テスト：HTTPS 受注画面', val: '3/3 成功', mark: '✓', bg: C.green },
+      { name: '禁止通信：TCP 23 / 22', val: '遮断維持', mark: '✓', bg: C.green },
+      { name: '他拠点向け通信の回帰', val: '影響なし', mark: '✓', bg: C.green },
+    ];
+    const apprMap = { pending: { label: '承認待ち', color: C.amber }, approved: { label: '承認済み', color: C.green }, rejected: { label: '却下', color: C.red }, hold: { label: '保留', color: C.amber } };
+
+    const applyDefs = [
+      ['承認 APR-311 と計画版・ハッシュを照合', 'plan=PLAN-0042-v2 hash=a91f3c expires=10:12'],
+      ['観測前提を再確認（30秒以内）', 'RT-MAIN Gi0/0 down · ACL110#30 deny · 業務不通 → 一致'],
+      ['対象をロック・適用前状態を永続化', 'RT-BKUP running-config snapshot → EXEC-7f21'],
+      ['ACL 110 ルール30 を置換', 'permit tcp 10.10.1.0/24 → 10.50.0.20 eq 443'],
+      ['適用結果を読み取りで照合', 'show access-list 110 → 差分一致 · 二重適用なし'],
+    ];
+    const applySteps = applyDefs.map(([name, detail], i) => {
+      const done = applyIdx > i, cur = applyIdx === i;
+      return { name, detail, mark: done ? '✓' : cur ? '…' : String(i + 1), bg: done ? C.green : cur ? C.blue : '#c3c9d1', color: done || cur ? C.ink : '#8a94a0', time: done ? `01:${41 + i * 3}` : '' };
+    });
+    const verifyDefs = [
+      ['HTTPS 受注画面 取得（3回連続）', 'GET / → 200 · 214ms / 198ms / 205ms'],
+      ['期待内容の一致', 'title="受注一覧" · 認証リダイレクト正常'],
+      ['禁止通信の遮断維持', 'TCP 23 → filtered · TCP 22 → filtered'],
+      ['回帰：他拠点・他サービス', '拠点B→APP-01 200 · DNS 正常'],
+    ];
+    const verifyTests = verifyDefs.map(([name, detail], i) => {
+      const done = verifyIdx > i, cur = verifyIdx === i;
+      return { name, detail: done ? detail : cur ? '実行中…' : '', mark: done ? '✓' : cur ? '…' : String(i + 1), bg: done ? C.green : cur ? C.blue : '#c3c9d1', verdict: done ? '合格' : '', color: C.green };
+    });
+
+    const callsBy = { 1: 0, 2: 3, 3: 3 + probeIdx * 2, 4: 17, 5: 19, 6: 21 };
+    return {
+      steps, sm, biz, headline: headlines[step], elapsed: elapsedMap[step], layout, showTech,
+      is1: step === 1, is2: step === 2, is3: step === 3, is4: step === 4, is5: step === 5, is6: step === 6, showTopo: step >= 2,
+      uploaded, notUploaded: !uploaded, startBtnBg: uploaded ? C.blue : '#b8c0ca',
+      upload: () => this.setState({ uploaded: true }), startInvestigation: () => { if (uploaded) this.go(2); },
+      go3: () => this.go(3), go4: () => this.go(4), go5: () => this.go(5), go6: () => this.go(6), restart: () => this.setState({ step: 1, uploaded: false, probeIdx: 0, appr: 'pending', applyIdx: -1, verifyIdx: -1 }),
+      topoNote: step === 2 ? '図由来。識別子は登録機器と照合中' : step === 3 ? '探索位置を青で表示。実測で確認した機器のみ確定' : step >= 5 && applyIdx >= 3 ? '予備経路のACLを修正済み' : '複合障害：主回線断 ＋ 予備経路ACL',
+      nodes, links, pulse, spinner, diffCount: step >= 3 && probeIdx >= 2 ? '1（GW-01 経路）' : '0',
+      readings, sceneJson, vlmModel: 'qwen2.5-vl-32b · local',
+      probeIdx, hypotheses, noHyp: hypotheses.length === 0, evidence, noEv: evidence.length === 0,
+      moreProbes: probeIdx < 6, probesDone: probeIdx >= 6, nextProbeText: probeIdx === 0 ? '業務端末から受注サービスへのHTTPS到達性を検査する' : (probes[probeIdx - 1].next || ''),
+      runProbe: () => this.setState(s => ({ probeIdx: Math.min(6, s.probeIdx + 1) })),
+      prechecks, appr: apprMap[appr], apprPending: appr === 'pending', apprApproved: appr === 'approved', apprRejected: appr === 'rejected', apprHold: appr === 'hold',
+      approve: () => this.setState({ appr: 'approved' }), reject: () => this.setState({ appr: 'rejected' }), hold: () => this.setState({ appr: 'hold' }), resetAppr: () => this.setState({ appr: 'pending' }),
+      applySteps, applyNotStarted: applyIdx < 0, applyRunning: applyIdx >= 0 && applyIdx < 5, applyDone: applyIdx >= 5, startApply: () => this.runApply(),
+      verifyTests, verifyNotStarted: verifyIdx < 0, verifyRunning: verifyIdx >= 0 && verifyIdx < 4, verifyDone, startVerify: () => this.runVerify(),
+      traceId: '4b1e…0042', calls: callsBy[step], tokens: (callsBy[step] * 1840).toLocaleString(), cost: (callsBy[step] * 6.2).toFixed(0),
+    };
+  }
+}
+</script>
+</body>
+</html>
