@@ -98,13 +98,20 @@ def save_execs(d: dict[str, Any]) -> None:
 # ---------------------------------------------------------------- observations
 
 def obs_link(prefix: str, node: str) -> dict[str, Any]:
-    raw = sh(["ip", "-n", f"{prefix}{node}", "-d", "link", "show"])
+    # tunl0/gre0 などカーネル既定のデバイスは検査対象外（eth-* のみが登録リンク）
+    raw = sh(["ip", "-n", f"{prefix}{node}", "-br", "link", "show"])
+    raw["stdout"] = "\n".join(
+        ln for ln in raw["stdout"].splitlines()
+        if ln.startswith("eth-") or ln.startswith("lo"))
     js = sh(["ip", "-n", f"{prefix}{node}", "-j", "link", "show"])
     parsed = []
     try:
         for it in json.loads(js["stdout"] or "[]"):
+            name = it.get("ifname") or ""
+            if not (name.startswith("eth-") or name == "lo"):
+                continue
             parsed.append({
-                "ifname": it.get("ifname"),
+                "ifname": name,
                 "operstate": it.get("operstate"),
                 "admin_up": "UP" in (it.get("flags") or []),
             })
@@ -337,9 +344,10 @@ def collect_state(prefix: str) -> dict[str, Any]:
         links = {}
         try:
             for it in json.loads(js["stdout"] or "[]"):
-                if it.get("ifname") == "lo":
+                name = it.get("ifname") or ""
+                if not name.startswith("eth-"):
                     continue
-                links[it["ifname"]] = {
+                links[name] = {
                     "admin_up": "UP" in (it.get("flags") or []),
                     "operstate": it.get("operstate"),
                 }

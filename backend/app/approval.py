@@ -69,4 +69,12 @@ def decide(incident_id: str, plan_id: str, plan_hash_from_client: str,
     ap["decided_at"] = db.now_iso()
     db.update_record(ap["id"], ap)
     events.publish("approval", {"incident_id": incident_id, "approval": ap})
+
+    # 承認待ちの区間をスパンとして記録（タイムラインで人間の判断時間が見える）
+    from . import otel
+    import datetime as _dt
+    start_ms = int(_dt.datetime.fromisoformat(ap["at"]).timestamp() * 1000)
+    otel.record_span(incident_id, f"承認待ち → {ap['decision']} ({ap['approver']})",
+                     "approval", start_ms, int(time.time() * 1000),
+                     {"plan_id": ap["plan_id"], "decision": ap["decision"]})
     return ap

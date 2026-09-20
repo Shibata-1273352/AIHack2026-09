@@ -179,10 +179,12 @@ def _investigate_scripted(incident_id: str, tools: ToolBelt) -> None:
     # ---- 5. 予備経路の疎通検査 ----
     publish_step(incident_id, "予備経路(r2)の疎通を層別に検査",
                  "L3到達性とTCP/HTTPSを切り分けます")
+    incident.node_status(incident_id, "srv", "probing", "到達性検査中")
     incident.node_status(incident_id, "r2", "probing", "調査中")
     p1 = tools.probe_path("client", "10.0.3.2", "ping")
     p2 = tools.probe_path("client", "10.0.100.10", "tcp", port=443)
     p3 = tools.probe_path("gw", "10.0.5.2", "ping")
+    incident.node_status(incident_id, "srv", "unknown", "到達不可（原因を調査中）")
     l3_ok = p1["result"]["ok"] and p3["result"]["ok"]
     tcp_ng = not p2["result"]["ok"]
     if l3_ok and tcp_ng:
@@ -617,8 +619,20 @@ def _finish_restored_with_residual(incident_id: str, tools: ToolBelt,
             "回線事業者保守窓口（担当候補）",
             "現地保守の手配と回線試験を依頼。復旧後に冗長化制御が自動で主回線へ復帰します")
         note = "業務復旧・主回線の対応継続（暫定復旧として継続管理）"
+        incident.node_status(incident_id, "r1", "bad", "残存課題（主回線断）")
     else:
         note = "業務復旧を確認"
+
+    # 構成図: 復旧した業務経路を実イベントとして表示（M-13）
+    incident.node_status(incident_id, "srv", "ok", "業務OK")
+    incident.node_status(incident_id, "client", "ok", "端末は正常")
+    incident.link_status(incident_id, "client-gw", "active", "業務通信")
+    if r1_down:
+        incident.link_status(incident_id, "gw-r2", "restored", "予備経路で復旧")
+        incident.link_status(incident_id, "r2-srv", "ok", "業務通信")
+    else:
+        incident.link_status(incident_id, "gw-r1", "ok", "主回線")
+        incident.link_status(incident_id, "r1-srv", "ok", "業務通信")
     incident.transition(incident_id, "SERVICE_RESTORED", note)
     publish_step(
         incident_id,
