@@ -99,16 +99,20 @@ def read_topology(incident_id: str) -> dict[str, Any]:
                 {"type": "image_url",
                  "image_url": {"url": f"data:image/png;base64,{b64}"}},
             ]
-            resp = gateway.call(incident_id, "vlm-topology", "vlm",
-                                system=SYSTEM_PROMPT, user=user_content,
-                                json_schema=GRAPH_SCHEMA)
-            run_meta = {"outcome": resp.outcome, "route": resp.route,
-                        "resolved_model": resp.resolved_model,
-                        "latency_ms": resp.latency_ms}
-            if resp.parsed and resp.schema_ok:
-                extracted = resp.parsed
-                if resp.outcome in ("mock", "fallback_to_mock"):
-                    source = "golden(録画済みVLM応答)"
+            try:
+                resp = gateway.call(incident_id, "vlm-topology", "vlm",
+                                    system=SYSTEM_PROMPT, user=user_content,
+                                    json_schema=GRAPH_SCHEMA)
+                run_meta = {"outcome": resp.outcome, "route": resp.route,
+                            "resolved_model": resp.resolved_model,
+                            "latency_ms": resp.latency_ms}
+                if resp.parsed and resp.schema_ok:
+                    extracted = resp.parsed
+                    if resp.outcome in ("mock", "fallback_to_mock"):
+                        source = "golden(録画済みVLM応答)"
+            except Exception as exc:  # noqa: BLE001
+                # VLM呼出の失敗はここで吸収し、登録機器表で調査を継続する
+                run_meta = {"outcome": "error", "error": type(exc).__name__}
             sp["attrs"].update(run_meta)
 
         if extracted is None:
