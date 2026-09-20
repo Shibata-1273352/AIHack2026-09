@@ -2,7 +2,7 @@
 // 接続時に全量を取得し、SSE で増分反映。切断時は再接続して全量を再取得する（T-12）。
 
 import { useEffect, useRef, useState } from "react";
-import type { Bundle, AppConfig } from "./types";
+import type { Bundle, AppConfig, SimPulse } from "./types";
 
 const EMPTY: Bundle = {
   incident: null, evidence: [], hypotheses: [], plans: [], approvals: [],
@@ -17,9 +17,12 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
   return next;
 }
 
-export function useBundle(): { bundle: Bundle; connected: boolean; refresh: () => void } {
+export function useBundle(): {
+  bundle: Bundle; connected: boolean; pulse: SimPulse | null; refresh: () => void;
+} {
   const [bundle, setBundle] = useState<Bundle>(EMPTY);
   const [connected, setConnected] = useState(false);
+  const [pulse, setPulse] = useState<SimPulse | null>(null);
   const esRef = useRef<EventSource | null>(null);
 
   const refresh = async () => {
@@ -46,6 +49,10 @@ export function useBundle(): { bundle: Bundle; connected: boolean; refresh: () =
       };
       es.onmessage = (msg) => {
         const ev = JSON.parse(msg.data);
+        if (ev.type === "sim_pulse") {
+          setPulse(ev.pulse);
+          return;
+        }
         setBundle((b) => {
           switch (ev.type) {
             case "incident":
@@ -107,7 +114,7 @@ export function useBundle(): { bundle: Bundle; connected: boolean; refresh: () =
     return () => { stopped = true; esRef.current?.close(); };
   }, []);
 
-  return { bundle, connected, refresh };
+  return { bundle, connected, pulse, refresh };
 }
 
 export function useConfig(): AppConfig | null {

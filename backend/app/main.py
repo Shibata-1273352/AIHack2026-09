@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -29,10 +31,21 @@ app.add_middleware(
 )
 
 
+def _pulse_loop() -> None:
+    """シミュレータの軽量テレメトリを2秒周期で SSE 配信（構成図のライブ演出用）。"""
+    while True:
+        try:
+            events.publish("sim_pulse", {"pulse": scenario.pulse()})
+        except Exception:  # noqa: BLE001  sim 停止中は配信を止めるだけ（UI側は「同期待ち」表示）
+            pass
+        time.sleep(2)
+
+
 @app.on_event("startup")
 async def _startup() -> None:
     events.set_loop(asyncio.get_running_loop())
     db.conn()  # スキーマ初期化
+    threading.Thread(target=_pulse_loop, daemon=True).start()
 
 
 # ================================================================ 案件

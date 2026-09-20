@@ -1,8 +1,10 @@
 // 構成図（SVG）。モックアップの視覚言語（ui-spec §5）を実トポロジ
 // （client/gw/r1/r2/srv = シミュレータの netns）に対応付ける。
-// ノード・リンクの状態はサーバの実イベント（node_status/link_status）にのみ連動する（M-13）。
+// 症状（業務パケットの流れ・停止）は sim_pulse のリアルタイム実測、
+// 原因マーク（リンク断×・ACL異常・赤色）はエージェントの実測証拠イベントのみが駆動する（M-13）。
 
-import type { Incident } from "../types";
+import { useEffect, useRef, useState } from "react";
+import type { Evidence, Incident, SimPulse } from "../types";
 
 const C = { blue: "#1f5fbf", green: "#1f8a5b", red: "#c73a2b", gray: "#c3c9d1", ink: "#1b2430", amber: "#b9770e" };
 
@@ -83,15 +85,33 @@ function nodeStyle(status: string) {
   }
 }
 
+// パケットの流れは sim_pulse（実測テレメトリ）のみが駆動するため、ここでは扱わない
 function linkStyle(status: string) {
   switch (status) {
-    case "active": return { stroke: C.blue, width: 3.5, dash: undefined, packets: true, cross: false };
+    case "active": return { stroke: C.blue, width: 3.5, dash: undefined, cross: false };
     case "ok":
-    case "restored": return { stroke: C.green, width: 3.5, dash: undefined, packets: true, cross: false };
-    case "down": return { stroke: C.red, width: 3.5, dash: "7 7", packets: false, cross: true };
-    case "blocked": return { stroke: C.red, width: 3.5, dash: "7 7", packets: false, cross: false };
-    default: return { stroke: C.gray, width: 2.5, dash: undefined, packets: false, cross: false };
+    case "restored": return { stroke: C.green, width: 3.5, dash: undefined, cross: false };
+    case "down": return { stroke: C.red, width: 3.5, dash: "7 7", cross: true };
+    case "blocked": return { stroke: C.red, width: 3.5, dash: "7 7", cross: false };
+    default: return { stroke: C.gray, width: 2.5, dash: undefined, cross: false };
   }
+}
+
+// 証拠イベントの対象ノード（コマンドチップの表示位置）
+function evidenceNode(e: Evidence): string | null {
+  const p = e.params as Record<string, unknown>;
+  const node = typeof p?.node === "string" ? p.node : null;
+  if (node && nodeById[node]) return node;
+  if (e.tool === "probe_path") {
+    const dst = String(p?.dst ?? "");
+    if (dst.includes("10.0.100.10") || dst.includes("order")) return "srv";
+    if (dst === "10.0.1.1") return "gw";
+    return "gw";
+  }
+  if (e.tool === "test_business" || e.tool === "test_forbidden") return "client";
+  if (e.tool === "validate_plan" || e.tool === "apply_plan") return "r2";
+  if (e.tool === "vlm_read_topology") return "gw";
+  return null;
 }
 
 function badgeFor(status: string, label: string): { text: string; bg: string } | null {
@@ -124,27 +144,95 @@ function Badge({ text, bg, y = -46 }: { text: string; bg: string; y?: number }) 
   );
 }
 
-export function Topology({ incident, note }: { incident: Incident | null; note: string }) {
+// LIVE インジケータ: sim_pulse の到着で緑パルス、5秒途絶で「同期待ち」
+export function LiveIndicator({ pulse }: { pulse: SimPulse | null }) {
+  const lastRef = useRef(0);
+  const [, tick] = useState(0);
+  useEffect(() => { if (pulse) lastRef.current = Date.now(); }, [pulse]);
+  useEffect(() => {
+    const t = setInterval(() => tick((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const live = !!pulse && Date.now() - lastRef.current < 5000;
+  // 表示時刻は受信時刻（ホスト時刻）。sim コンテナ内時刻はTZが異なるため使わない
+  const at = new Date(lastRef.current);
+  const hh = (n: number) => String(n).padStart(2, "0");
+  const atStr = `${hh(at.getHours())}:${hh(at.getMinutes())}:${hh(at.getSeconds())}`;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 7,
+      fontSize: 11, fontWeight: 600, color: live ? C.green : "#8a94a0",
+      background: live ? "var(--bg-green-tint)" : "var(--bg-subtle)",
+      border: `1px solid ${live ? "rgba(31,138,91,.18)" : "var(--border-subtle)"}`,
+      borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap",
+    }}>
+      <span className={live ? "live-dot" : undefined} style={{
+        width: 8, height: 8, borderRadius: "50%",
+        background: live ? C.green : C.gray, flex: "none",
+      }} />
+      {live ? `シミュレータ実測と同期 · ${atStr}` : "同期待ち"}
+    </span>
+  );
+}
+
+export function Topology({ incident, note, pulse, evidence, style }: {
+  incident: Incident | null; note: string;
+  pulse: SimPulse | null; evidence: Evidence[];
+  style?: React.CSSProperties;
+}) {
   const gs = incident?.graph_status ?? { nodes: {}, links: {} };
   const probedCount = Object.values(gs.nodes).filter((n) => n.status !== "unknown" && n.status !== "probing").length;
   const diffCount = Object.values(gs.links).filter((l) => l.status === "down").length
     + Object.values(gs.nodes).filter((n) => n.status === "bad" && n.label.includes("ACL")).length;
 
+  // 業務パケットの常時アニメーション（sim_pulse 駆動）: 正常=青、復旧後=緑
+  const activePath = pulse?.active_path === "r2" ? "r2" : "r1";
+  const bizLinks = ["client-gw", `gw-${activePath}`, `${activePath}-srv`];
+  const bizFlow = !!pulse?.business_ok;
+  const restored = !!incident && ["SERVICE_RESTORED", "RESOLVED"].includes(incident.status);
+  const packetColor = restored ? C.green : C.blue;
+
+  // 実コマンドチップ: evidence 到着時に対象ノード近傍へ約2秒フロート表示
+  const [chips, setChips] = useState<{ key: string; node: string; text: string }[]>([]);
+  const seenRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (seenRef.current === null) {
+      // 初回マウント（リロード）時は既存証拠を一斉表示しない
+      seenRef.current = new Set(evidence.map((e) => e.id));
+      return;
+    }
+    const seen = seenRef.current;
+    const fresh = evidence.filter((e) => !seen.has(e.id));
+    if (fresh.length === 0) return;
+    fresh.forEach((e) => seen.add(e.id));
+    const added = fresh
+      .map((e) => ({ key: e.id, node: evidenceNode(e) as string, text: e.tool }))
+      .filter((c) => c.node);
+    if (added.length === 0) return;
+    setChips((cs) => [...cs, ...added]);
+    for (const c of added) {
+      setTimeout(() => setChips((cs) => cs.filter((x) => x.key !== c.key)), 2200);
+    }
+  }, [evidence]);
+
   return (
-    <section className="card" style={{ order: 1 }}>
-      <div className="card-head" style={{ flexWrap: "wrap" }}>
+    <section className="card" style={{ minWidth: 0, minHeight: 0, ...style }}>
+      <div className="card-head">
         <h2>構成図（構造化）</h2>
-        <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{note}</span>
-        <span style={{ marginLeft: "auto", display: "flex", gap: 12, fontSize: 11, color: "var(--text-muted)" }}>
+        <span style={{ fontSize: 11.5, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{note}</span>
+        <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "var(--text-muted)" }}>
           {[["調査中", C.blue], ["確認済", C.green], ["異常", C.red], ["未確認", C.gray]].map(([t, c]) => (
             <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: c as string }} />{t}
             </span>
           ))}
+          <LiveIndicator pulse={pulse} />
         </span>
       </div>
 
-      <svg viewBox="0 0 900 490" style={{ width: "100%", height: "auto", display: "block", fontFamily: "'Noto Sans JP',sans-serif" }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
+      <svg viewBox="0 0 900 490" preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "100%", display: "block", fontFamily: "'Noto Sans JP',sans-serif" }}>
         <defs>
           <pattern id="nwdots" width="22" height="22" patternUnits="userSpaceOnUse">
             <circle cx="1.2" cy="1.2" r="1.2" fill="#dde2e9" />
@@ -201,16 +289,6 @@ export function Topology({ incident, note }: { incident: Incident | null; note: 
               <path d={d} fill="none" stroke="#fff" strokeWidth="7" strokeLinecap="round" opacity=".9" />
               <path d={d} fill="none" stroke={s.stroke} strokeWidth={s.width}
                 strokeDasharray={s.dash} strokeLinecap="round" />
-              {s.packets && (
-                <>
-                  <circle r="4.5" fill={s.stroke} stroke="#fff" strokeWidth="1.5">
-                    <animateMotion dur="1.6s" repeatCount="indefinite" path={d} />
-                  </circle>
-                  <circle r="4.5" fill={s.stroke} stroke="#fff" strokeWidth="1.5">
-                    <animateMotion dur="1.6s" begin="0.8s" repeatCount="indefinite" path={d} />
-                  </circle>
-                </>
-              )}
               {s.cross && (
                 <g transform={`translate(${mx},${my})`}>
                   <circle r="11" fill="#fff" stroke={C.red} strokeWidth="2" />
@@ -258,12 +336,57 @@ export function Topology({ incident, note }: { incident: Incident | null; note: 
             </g>
           );
         })}
+
+        {/* 業務パケット（sim_pulse 実測）: 業務経路に沿って流れ、不通なら止まる */}
+        {bizFlow && bizLinks.map((lid, i) => {
+          const l = LINKS.find((x) => x.id === lid);
+          if (!l) return null;
+          const d = bezier(nodeById[l.a], nodeById[l.b]);
+          return (
+            <g key={`pkt-${lid}`}>
+              <circle r="4.5" fill={packetColor} stroke="#fff" strokeWidth="1.5">
+                <animateMotion dur="1.6s" begin={`${i * 0.25}s`} repeatCount="indefinite" path={d} />
+              </circle>
+              <circle r="4.5" fill={packetColor} stroke="#fff" strokeWidth="1.5">
+                <animateMotion dur="1.6s" begin={`${i * 0.25 + 0.8}s`} repeatCount="indefinite" path={d} />
+              </circle>
+            </g>
+          );
+        })}
+
+        {/* 業務不通（sim_pulse 実測でパケットが届いていない） */}
+        {pulse && !pulse.business_ok && (
+          <g transform="translate(760,330)" className="fadein">
+            <rect x="-46" y="-12" width="92" height="24" rx="12" fill={C.red} filter="url(#nwsh)" />
+            <text y="4" textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff">業務不通</text>
+          </g>
+        )}
+
+        {/* 実コマンドチップ: 実測と画面の1:1対応を見せる */}
+        {chips.map((c, i) => {
+          const n = nodeById[c.node];
+          if (!n) return null;
+          const bw = c.text.length * 6.6 + 18;
+          return (
+            <g key={c.key} className="fadein"
+              transform={`translate(${n.x + 40},${n.y - 34 - (i % 3) * 22})`}>
+              <rect x="0" y="-11" width={bw} height="22" rx="6"
+                fill="#0f1420" opacity=".88" filter="url(#nwsh)" />
+              <text x={bw / 2} y="4" textAnchor="middle" fontSize="10"
+                fontFamily="'IBM Plex Mono',monospace" fill="#cfe3ff">{c.text}</text>
+            </g>
+          );
+        })}
       </svg>
+      </div>
 
       <div style={{ borderTop: "1px solid var(--border-divider)", paddingTop: 10, fontSize: 11.5, color: "var(--text-muted)", display: "flex", gap: 14, flexWrap: "wrap" }}>
         <span>ノード 5 · リンク 5</span>
         <span>実測確認 {probedCount} / 5</span>
         <span>図と実態の差：{diffCount > 0 ? `${diffCount}件` : "0"}</span>
+        <span style={{ marginLeft: "auto" }}>
+          業務経路（実測）: client → gw → {activePath} → srv{pulse ? (pulse.business_ok ? " · 疎通" : " · 不通") : ""}
+        </span>
       </div>
     </section>
   );

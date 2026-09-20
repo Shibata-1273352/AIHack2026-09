@@ -37,6 +37,12 @@ def ground_truth() -> dict[str, Any]:
         return c.get("/admin/ground_truth").json()
 
 
+def pulse() -> dict[str, Any]:
+    """ライブテレメトリ（業務疎通・使用経路）。UI 演出専用でエージェント不可視。"""
+    with _client() as c:
+        return c.get("/admin/pulse", timeout=3).json()
+
+
 def sim_health() -> dict[str, Any]:
     try:
         with _client() as c:

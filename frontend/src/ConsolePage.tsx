@@ -1,13 +1,22 @@
 // Mac 調査コンソール（/console）。SSEイベント駆動でサーバの案件状態を表示する。
+// 1920×1080 の論理ステージ（components/Stage.tsx が 4K/ノートPC へ拡縮）に
+// 「調査 → 承認 → 復旧」の全てをページスクロール無しの一画面で配置する。
+//
+//   ┌─244─┬─ HeaderBar(64) ──────────────────────────────┐
+//   │ サ  │ ┌ topo 構成図ヒーロー ─────┐ ┌ rail 560 ────┐ │
+//   │ イ  │ │ (約1062×702)             │ │ PhaseStage   │ │
+//   │ ド  │ ├ ribbon 仮説/成果 (96) ───┤ │ (540)        │ │
+//   │ バ  │ ├ tl タイムライン+KPI(160) ┤ │ EvidenceFeed │ │
+//   └─────┴──────────────────────────────────────────────┘
 
 import { useBundle, useConfig, post } from "./api";
 import { Sidebar, HeaderBar, currentStep } from "./components/Chrome";
 import { Topology } from "./components/Topology";
-import {
-  IntakeCard, VlmCard, HypothesesCard, EvidenceCard,
-  CauseAndPlanCard, ApplyCard, VerifyCard, AwaitingApprovalHint, NeedsHumanBanner,
-} from "./components/Panels";
-import { TimelineCard, TechStrip } from "./components/Timeline";
+import { DiagramPreviewCard, EvidenceFeed, InsightRibbon } from "./components/Panels";
+import { PhaseStage } from "./components/PhaseStage";
+import { TimelineCard } from "./components/Timeline";
+import { OpsDrawer } from "./components/OpsDrawer";
+import { STAGE_W, STAGE_H } from "./components/Stage";
 
 function topoNote(step: number, bundle: ReturnType<typeof useBundle>["bundle"]): string {
   const inc = bundle.incident;
@@ -20,11 +29,11 @@ function topoNote(step: number, bundle: ReturnType<typeof useBundle>["bundle"]):
 }
 
 export default function ConsolePage() {
-  const { bundle, connected } = useBundle();
+  const { bundle, connected, pulse } = useBundle();
   const cfg = useConfig();
   const inc = bundle.incident;
   const step = currentStep(bundle);
-  const active = inc && !["SERVICE_RESTORED", "RESOLVED", "CANCELLED"].includes(inc.status);
+  const intake = !inc || inc.status === "RECEIVED";
 
   const modeNote = inc
     ? (inc.route_label ?? inc.mode)
@@ -34,38 +43,47 @@ export default function ConsolePage() {
 
   const startIncident = async () => { await post("/api/incidents", {}); };
 
+  // グリッド子は全て minWidth/minHeight 0 のラッパで包む（はみ出し事故の定番対策）
+  const cell = (area: string): React.CSSProperties =>
+    ({ gridArea: area, minWidth: 0, minHeight: 0, display: "flex" });
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "244px minmax(0,1fr)", minHeight: "100vh" }}>
+    <div style={{
+      display: "grid", gridTemplateColumns: "244px minmax(0,1fr)",
+      width: STAGE_W, height: STAGE_H,
+    }}>
       <Sidebar bundle={bundle} modeNote={modeNote} />
-      <main style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <main style={{ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
         <HeaderBar bundle={bundle} connected={connected} />
         <div style={{
-          display: "grid", gap: 16, padding: "20px 28px 32px",
-          gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,500px),1fr))",
-          alignItems: "start",
+          flex: 1, minHeight: 0, minWidth: 0,
+          display: "grid", gap: 14, padding: "14px 20px 16px",
+          gridTemplateColumns: "minmax(0,1fr) 560px",
+          gridTemplateRows: "minmax(0,1fr) 96px 160px",
+          gridTemplateAreas: '"topo rail" "ribbon rail" "tl rail"',
         }}>
-          {!inc || inc.status === "RECEIVED" ? (
-            <IntakeCard started={!!inc} onStart={startIncident} />
-          ) : (
-            <>
-              <Topology incident={inc} note={topoNote(step, bundle)} />
-              <div style={{ order: 2, display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-                <NeedsHumanBanner bundle={bundle} />
-                {step >= 4 && <AwaitingApprovalHint bundle={bundle} />}
-                {step === 2 && <VlmCard bundle={bundle} />}
-                {step >= 3 && <HypothesesCard hypotheses={bundle.hypotheses} />}
-                {step >= 4 && <CauseAndPlanCard bundle={bundle} />}
-                {step >= 5 && <ApplyCard bundle={bundle} />}
-                {step >= 6 && <VerifyCard bundle={bundle} />}
-                <EvidenceCard evidence={bundle.evidence} />
-                {step >= 3 && <VlmCard bundle={bundle} />}
-              </div>
-              <TimelineCard bundle={bundle} />
-              <TechStrip bundle={bundle} modeNote={modeNote} />
-            </>
-          )}
+          <div style={cell("topo")}>
+            {intake && !bundle.evidence.some((e) => e.tool === "vlm_read_topology")
+              ? <DiagramPreviewCard pulse={pulse} style={{ flex: 1 }} />
+              : <Topology incident={inc} note={topoNote(step, bundle)}
+                  pulse={pulse} evidence={bundle.evidence} style={{ flex: 1 }} />}
+          </div>
+          <div style={cell("ribbon")}>
+            <InsightRibbon bundle={bundle} style={{ flex: 1 }} />
+          </div>
+          <div style={cell("tl")}>
+            <TimelineCard bundle={bundle} style={{ flex: 1 }} />
+          </div>
+          <div style={{
+            gridArea: "rail", minWidth: 0, minHeight: 0,
+            display: "grid", gridTemplateRows: "minmax(0,540px) minmax(0,1fr)", gap: 14,
+          }}>
+            <PhaseStage bundle={bundle} onStart={startIncident} />
+            <EvidenceFeed evidence={bundle.evidence} />
+          </div>
         </div>
       </main>
+      <OpsDrawer />
     </div>
   );
 }

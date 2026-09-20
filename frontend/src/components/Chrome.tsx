@@ -143,13 +143,13 @@ export function HeaderBar({ bundle, connected }: { bundle: Bundle; connected: bo
   const biz = bizChip(inc);
   return (
     <header className="header">
-      <div style={{ flex: 1, minWidth: 220 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div className="hlabel">現在の処理</div>
-        <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis" }}>
           {inc ? inc.current_activity : "構成図と症状を確認して調査を開始します"}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 24, flexWrap: "nowrap", flex: "none" }}>
         <div>
           <div className="hlabel">業務状態</div>
           <span className="chip" style={{ marginTop: 3, background: biz.bg, color: biz.fg }}>{biz.label}</span>

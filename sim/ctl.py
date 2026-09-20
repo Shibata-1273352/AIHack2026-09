@@ -596,6 +596,32 @@ def admin_compare() -> dict[str, Any]:
     return compare_envs()
 
 
+@app.get("/admin/pulse")
+def admin_pulse() -> dict[str, Any]:
+    """軽量テレメトリ（UI のライブ演出用）。/agent/* ではないためエージェント不可視（§7.3）。
+
+    curl 1回 + failover 状態ファイル読取のみ。2秒周期ポーリングに耐える軽さに保つ。
+    """
+    r = sh(nsx("t-", "client", "curl", "-s", "-o", "/dev/null",
+               "--connect-timeout", "0.5", "--max-time", "1.5",
+               "--cacert", CERT, "-w", "%{http_code}",
+               "https://order.example.com/"), timeout=3)
+    business_ok = r["rc"] == 0 and r["stdout"].strip() == "200"
+    fstate = RUN / "t-failover.json"
+    state = None
+    if fstate.exists():
+        try:
+            state = json.loads(fstate.read_text())
+        except json.JSONDecodeError:
+            state = None
+    return {
+        "business_ok": business_ok,
+        "active_path": (state or {}).get("active_path", "r1"),
+        "primary_link_up": (state or {}).get("primary_link_up"),
+        "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+
+
 @app.get("/admin/ground_truth")
 def ground_truth() -> dict[str, Any]:
     """正解情報（評価系のみ参照。診断エージェントへは渡さない）。"""

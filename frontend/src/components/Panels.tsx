@@ -1,60 +1,73 @@
-// 右パネル群: 受付 / VLM読取 / 仮説 / 証拠 / 変更計画 / 適用 / 復旧確認 / 残存課題
+// 右パネル群: 受付 / VLM読取 / 仮説 / 証拠フィード / 変更計画 / 適用 / 復旧確認 / リボン
 // すべてサーバの実データ（証拠・計画・実行記録）を表示する。
 
-import { useState } from "react";
-import { post } from "../api";
-import type { Bundle, Evidence, Hypothesis, Plan } from "../types";
+import { useEffect, useRef, useState } from "react";
+import type { Approval, Bundle, Evidence, Hypothesis, Plan, SimPulse } from "../types";
+import { LiveIndicator } from "./Topology";
 
 const AC = { open: "#b9770e", supported: "#c73a2b", rejected: "#8a94a0" } as const;
 const AS = { open: "調査中", supported: "支持", rejected: "棄却" } as const;
 
-// ---------------------------------------------------------------- 受付
+// ---------------------------------------------------------------- 受付（構成図プレビュー = topo エリア）
 
-export function IntakeCard({ started, onStart }: { started: boolean; onStart: () => void }) {
+export function DiagramPreviewCard({ pulse, style }: { pulse: SimPulse | null; style?: React.CSSProperties }) {
+  const activePath = pulse?.active_path === "r2" ? "r2" : "r1";
+  return (
+    <section className="card" style={{ minWidth: 0, minHeight: 0, ...style }}>
+      <div className="card-head">
+        <h2>構成図</h2>
+        <span className="card-note">管理者登録済み · NW-A-102 · 版 site-A-2026-09-20（調査開始で登録機器表と照合）</span>
+        <LiveIndicator pulse={pulse} />
+      </div>
+      <div style={{
+        flex: 1, minHeight: 0, border: "1px solid var(--border-inner)", borderRadius: 10,
+        background: "#fbfbfc", padding: 12, display: "flex", flexDirection: "column",
+      }}>
+        <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 8 }}>プレビュー（原図）</div>
+        <img src="/api/assets/topology-diagram.png" alt="拠点A構成図"
+          style={{ flex: 1, minHeight: 0, width: "100%", objectFit: "contain", display: "block" }} />
+      </div>
+      {/* 申告前でもシミュレータ実測は動いている（注入の瞬間がここに映る） */}
+      <div style={{ borderTop: "1px solid var(--border-divider)", paddingTop: 10, fontSize: 11.5, display: "flex", gap: 14 }}>
+        <span style={{ color: "var(--text-muted)" }}>業務経路（実測）: client → gw → {activePath} → srv</span>
+        {pulse && (
+          <span style={{ marginLeft: "auto", fontWeight: 700, color: pulse.business_ok ? "var(--green)" : "var(--red)" }}>
+            {pulse.business_ok ? "業務通信 疎通" : "業務通信 不通"}
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- 受付（申告フォーム = PhaseStage 内）
+
+export function IntakeForm({ started, onStart }: { started: boolean; onStart: () => void }) {
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <section className="card" style={{ order: 1, padding: 20 }}>
-        <div className="card-head">
-          <h2>構成図</h2>
-          <span className="card-note">管理者登録済み · NW-A-102</span>
-        </div>
-        <div style={{ border: "1px solid var(--border-inner)", borderRadius: 10, background: "#fbfbfc", padding: 12 }}>
-          <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 8 }}>プレビュー（原図）</div>
-          <img src="/api/assets/topology-diagram.png" alt="拠点A構成図"
-            style={{ width: "100%", borderRadius: 6, display: "block" }} />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
-          <span style={{ color: "var(--text-muted)" }}>版</span>
-          <span>site-A-2026-09-20（登録機器表と照合予定）</span>
-        </div>
-      </section>
-
-      <section className="card" style={{ order: 2, padding: 20 }}>
-        <h2>症状の申告</h2>
-        {[["拠点", "拠点A（東京・営業所）"],
-          ["対象業務", "受注システム（https://order.example.com）"],
-          ["症状", "9:40頃から受注画面が開かない。社内チャットは使える。機器のランプは点灯している。"]].map(([l, v]) => (
-          <label key={l} style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
-            {l}
-            <div style={{
-              border: "1px solid var(--border-input)", borderRadius: 8, padding: "9px 12px",
-              fontSize: 13.5, color: "var(--ink)", background: "#fff",
-              lineHeight: l === "症状" ? 1.6 : undefined, minHeight: l === "症状" ? 84 : undefined,
-            }}>{v}</div>
-          </label>
-        ))}
-        <div style={{
-          background: "var(--bg-subtle)", border: "1px solid var(--border-subtle)", borderRadius: 10,
-          padding: "10px 12px", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6,
-        }}>
-          接続情報・許可範囲は導入時登録済み（拠点A設定 v7）。再入力は不要です。
-        </div>
-        <button className="btn-primary" disabled={busy || started} style={{ marginTop: "auto" }}
-          onClick={async () => { setBusy(true); try { await onStart(); } finally { setBusy(false); } }}>
-          {busy ? "受付中…" : "調査を開始"}
-        </button>
-      </section>
+      {[["拠点", "拠点A（東京・営業所）"],
+        ["対象業務", "受注システム（https://order.example.com）"],
+        ["症状", "9:40頃から受注画面が開かない。社内チャットは使える。機器のランプは点灯している。"]].map(([l, v]) => (
+        <label key={l} style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+          {l}
+          <div style={{
+            border: "1px solid var(--border-input)", borderRadius: 8, padding: "9px 12px",
+            fontSize: 13.5, color: "var(--ink)", background: "#fff",
+            lineHeight: l === "症状" ? 1.6 : undefined,
+          }}>{v}</div>
+        </label>
+      ))}
+      <div style={{
+        background: "var(--bg-subtle)", border: "1px solid var(--border-subtle)", borderRadius: 10,
+        padding: "10px 12px", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6,
+      }}>
+        接続情報・許可範囲は導入時登録済み（拠点A設定 v7）。再入力は不要です。
+      </div>
+      <button className="btn-primary" disabled={busy || started} style={{ marginTop: "auto" }}
+        onClick={async () => { setBusy(true); try { await onStart(); } finally { setBusy(false); } }}>
+        {busy || started ? "受付中…" : "調査を開始"}
+      </button>
     </>
   );
 }
@@ -111,7 +124,7 @@ export function VlmCard({ bundle }: { bundle: Bundle }) {
             {r.registered_version} · {r.source === "vlm" ? "図由来" : r.source}
           </span>
         </div>
-        <pre>{JSON.stringify(r.extracted, null, 2)}</pre>
+        <pre style={{ maxHeight: 180 }}>{JSON.stringify(r.extracted, null, 2)}</pre>
       </div>
     </section>
   );
@@ -194,33 +207,48 @@ function rawExcerpt(e: Evidence): string {
   return JSON.stringify(r).slice(0, 400);
 }
 
-export function EvidenceCard({ evidence }: { evidence: Evidence[] }) {
+export function EvidenceFeed({ evidence, style }: { evidence: Evidence[]; style?: React.CSSProperties }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const list = [...evidence].reverse();
+  const hoverRef = useRef(false);
+  const endRef = useRef<HTMLDivElement>(null);
+  // 新着で末尾へ自動追尾（ホバー中＝読んでいる間は停止）
+  useEffect(() => {
+    if (!hoverRef.current) endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [evidence.length]);
+
   return (
-    <section className="card fadein">
+    <section className="card" style={{ minWidth: 0, minHeight: 0, gap: 8, ...style }}
+      onMouseEnter={() => { hoverRef.current = true; }}
+      onMouseLeave={() => { hoverRef.current = false; }}>
       <div className="card-head">
         <h2>証拠（実測）</h2>
-        <span className="card-note">シミュレータ上の実コマンド出力 · クリックで生データ</span>
+        <span className="card-note">実コマンド出力 · クリックで生JSON · {evidence.length}件</span>
       </div>
-      {list.length === 0 && <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>証拠はまだありません。</div>}
-      <div style={{ maxHeight: 420, overflowY: "auto" }}>
-        {list.map((e) => {
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {evidence.length === 0 && (
+          <div style={{ fontSize: 12.5, color: "var(--text-faint)", padding: "8px 2px" }}>
+            観測待機中。調査開始で実測コマンドの結果がここへ流れます。
+          </div>
+        )}
+        {evidence.map((e) => {
           const v = evVerdict(e);
+          const open = openId === e.id;
           return (
-            <div key={e.id} className="ev-row" style={{ cursor: "pointer" }}
-              onClick={() => setOpenId(openId === e.id ? null : e.id)}>
-              <div className="ev-time">{e.at.slice(11, 16)}</div>
-              <div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div key={e.id} className="ev-row fadein" style={{ cursor: "pointer" }}
+              onClick={() => setOpenId(open ? null : e.id)}>
+              <div className="ev-time">{e.at.slice(11, 19)}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
                   <span className="tool-chip">{e.tool}</span>
-                  <span style={{ fontWeight: 600 }}>{e.id}</span>
-                  <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: v.color }}>{v.text}</span>
+                  <span style={{ fontWeight: 600, fontSize: 11.5 }}>{e.id}</span>
+                  <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: v.color, flex: "none" }}>{v.text}</span>
                 </div>
-                <div style={{ marginTop: 3, lineHeight: 1.5 }}>{e.summary}</div>
-                <div className="ev-out">{rawExcerpt(e)}</div>
-                {openId === e.id && (
-                  <pre className="ev-out" style={{ maxHeight: 260, background: "var(--bg-faint)", padding: 8, borderRadius: 6 }}>
+                <div className="clamp1" style={{ marginTop: 2, lineHeight: 1.45 }}>{e.summary}</div>
+                <div className={`ev-out ${open ? "" : "clamp2"}`} style={{ maxHeight: open ? undefined : 34, overflow: "hidden" }}>
+                  {rawExcerpt(e)}
+                </div>
+                {open && (
+                  <pre className="ev-out" style={{ maxHeight: 200, background: "var(--bg-faint)", padding: 8, borderRadius: 6, overflow: "auto" }}>
                     {JSON.stringify(e.result, null, 2)}
                   </pre>
                 )}
@@ -228,6 +256,7 @@ export function EvidenceCard({ evidence }: { evidence: Evidence[] }) {
             </div>
           );
         })}
+        <div ref={endRef} />
       </div>
     </section>
   );
@@ -485,41 +514,122 @@ export function VerifyCard({ bundle }: { bundle: Bundle }) {
   );
 }
 
-// ---------------------------------------------------------------- 承認待ちヒント
+// ---------------------------------------------------------------- 承認残り時間（1秒カウントダウン）
 
-export function AwaitingApprovalHint({ bundle }: { bundle: Bundle }) {
-  const ap = bundle.approvals[bundle.approvals.length - 1];
-  if (!ap || ap.decision !== "pending") return null;
+function RemainText({ ap }: { ap: Approval }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const remain = Math.max(0, Math.floor(ap.expires_epoch - Date.now() / 1000));
+  return <>{Math.floor(remain / 60)}:{String(remain % 60).padStart(2, "0")}</>;
+}
+
+// ---------------------------------------------------------------- インサイトリボン（仮説・成果チップ列、横1行・累積）
+
+function RChip({ fg, bg, bd, title, wide, children }: {
+  fg: string; bg: string; bd?: string; title?: string; wide?: boolean; children: React.ReactNode;
+}) {
   return (
-    <div className="fadein" style={{
-      background: "var(--bg-amber-tint)", border: "1px solid rgba(185,119,14,.2)", borderRadius: 12,
-      padding: "14px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 12,
-    }}>
-      <span className="spinner" style={{ borderTopColor: "var(--amber)" }} />
-      <span>
-        <b style={{ color: "var(--amber)" }}>iPad の承認端末で確認してください。</b>{" "}
-        計画 v{ap.plan_version}（hash {ap.plan_hash.slice(0, 6)}…）· 有効期限 {ap.expires_at.slice(11, 16)}
-      </span>
-    </div>
+    <span className="fadein" title={title} style={{
+      display: "inline-flex", alignItems: "center", gap: 6, flex: "none",
+      maxWidth: wide ? undefined : 380, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+      padding: "5px 12px", borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+      color: fg, background: bg, border: `1px solid ${bd ?? "transparent"}`,
+    }}>{children}</span>
   );
 }
 
-// ---------------------------------------------------------------- NEEDS_HUMAN
+export function InsightRibbon({ bundle, style }: { bundle: Bundle; style?: React.CSSProperties }) {
+  const inc = bundle.incident;
+  const ap = bundle.approvals[bundle.approvals.length - 1];
+  const vlmEv = bundle.evidence.find((e) => e.tool === "vlm_read_topology");
+  const restored = !!inc && ["SERVICE_RESTORED", "RESOLVED"].includes(inc.status);
+  const supported = bundle.hypotheses.filter((h) => h.status === "supported");
+  const lastHist = inc?.status_history[inc.status_history.length - 1];
 
-export function NeedsHumanBanner({ bundle }: { bundle: Bundle }) {
-  const inc = bundle.incident!;
-  if (inc.status !== "NEEDS_HUMAN") return null;
-  const last = inc.status_history[inc.status_history.length - 1];
+  const chips: React.ReactNode[] = [];
+
+  if (!inc || inc.status === "RECEIVED") {
+    chips.push(
+      <RChip key="demo" wide fg="var(--text-muted)" bg="var(--bg-subtle)" bd="var(--border-subtle)">
+        デモ手順：右下の ⚙（または o キー）→ ① リセット → ② 複合障害を注入 → ③ 申告 → 構成図の業務パケットに注目
+      </RChip>,
+    );
+    if (inc) {
+      chips.push(<RChip key="rcv" fg="var(--blue)" bg="var(--bg-chip-blue)">申告受付済み · 調査を開始します</RChip>);
+    }
+  } else {
+    if (vlmEv) {
+      const r = vlmEv.result;
+      const pending = (r.comparison?.unmatched_labels?.length ?? 0) + (r.comparison?.missing_registered?.length ?? 0);
+      chips.push(
+        <RChip key="vlm" fg="var(--blue)" bg="var(--bg-chip-blue)">
+          VLM照合 ✓ ノード{(r.mapped_nodes ?? []).length} · リンク{(r.mapped_links ?? []).length}
+          {pending > 0 ? ` · 確認待ち${pending}` : ""}
+        </RChip>,
+      );
+    }
+    for (const h of bundle.hypotheses) {
+      const idx = supported.indexOf(h);
+      const prefix = h.status === "supported" ? `要因${String.fromCharCode(65 + idx)} ` : `H${h.seq} `;
+      chips.push(
+        <RChip key={h.id} title={`${h.text}（証拠 ${h.evidence_ids.join(", ") || "—"}）`}
+          fg={AC[h.status]}
+          bg={h.status === "supported" ? "var(--bg-red-tint)" : h.status === "open" ? "var(--bg-amber-tint)" : "var(--bg-subtle)"}>
+          <b>{prefix}</b>{h.text}
+          {h.evidence_ids.length > 0 && (
+            <span style={{ fontFamily: "var(--mono)", fontWeight: 400, fontSize: 10.5 }}>
+              {h.evidence_ids.join(",")}
+            </span>
+          )}
+          <span style={{ fontWeight: 700 }}>{AS[h.status]}</span>
+        </RChip>,
+      );
+    }
+    if (ap?.decision === "pending") {
+      chips.push(
+        <RChip key="await" fg="var(--amber)" bg="var(--bg-amber-tint)" bd="rgba(185,119,14,.25)">
+          <span className="spinner" style={{ width: 11, height: 11, borderTopColor: "var(--amber)" }} />
+          承認待ち · 残り <span style={{ fontFamily: "var(--mono)" }}><RemainText ap={ap} /></span>
+        </RChip>,
+      );
+    }
+    if (restored) {
+      chips.push(
+        <RChip key="ok" fg="#fff" bg="var(--green)">
+          ✓ 業務復旧を確認 · {inc!.status}{inc!.residual_issues.length > 0 ? "（予備経路で暫定復旧）" : ""}
+        </RChip>,
+      );
+      inc!.residual_issues.forEach((r, i) => {
+        chips.push(
+          <RChip key={`res-${i}`} fg="var(--amber)" bg="var(--bg-amber-tint)" title={`${r.detail}（担当候補：${r.assignee}）`}>
+            残存{String.fromCharCode(65 + i)}: {r.title} → {r.assignee}
+          </RChip>,
+        );
+      });
+    }
+    if (inc!.status === "NEEDS_HUMAN") {
+      chips.push(
+        <RChip key="nh" fg="var(--amber)" bg="var(--bg-amber-tint)" bd="rgba(185,119,14,.3)" title={lastHist?.note}>
+          担当者対応待ち（NEEDS_HUMAN）· {lastHist?.note ?? "証拠・仮説は案件に保存済み"}
+        </RChip>,
+      );
+    }
+  }
+
   return (
-    <div className="fadein" style={{
-      background: "var(--bg-amber-tint)", border: "1px solid rgba(185,119,14,.25)", borderRadius: 12,
-      padding: "14px 16px", fontSize: 13,
+    <section className="card" style={{
+      minWidth: 0, minHeight: 0, flexDirection: "row", alignItems: "center",
+      gap: 10, padding: "10px 18px", overflow: "hidden", ...style,
     }}>
-      <b style={{ color: "var(--amber)" }}>担当者の対応待ち（NEEDS_HUMAN）</b>
-      <div style={{ marginTop: 4, lineHeight: 1.5 }}>{last?.note}</div>
-      <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-muted)" }}>
-        証拠・仮説・次の作業は本案件に保存済みです。担当者は同じ案件から対応を再開できます。
+      <div style={{ flex: "none", fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--text-muted)" }}>
+        仮説・成果
       </div>
-    </div>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+        {chips}
+      </div>
+    </section>
   );
 }

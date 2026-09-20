@@ -101,6 +101,14 @@ export interface Bundle {
   steps: AgentStep[];
 }
 
+// シミュレータの軽量テレメトリ（SSE sim_pulse、2秒周期）。演出専用でエージェント不可視。
+export interface SimPulse {
+  business_ok: boolean;
+  active_path: "r1" | "r2";
+  primary_link_up: boolean | null;
+  at: string;
+}
+
 export interface AppConfig {
   agent_mode: string;
   route_mode: string;
