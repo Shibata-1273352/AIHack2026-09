@@ -21,6 +21,23 @@
 | プロンプトインジェクション対策 | `backend/app/vlm.py:67` + `GRAPH_SCHEMA` + `vlm.py:145 compare_graph` | 攻撃PDF → 命令無視・正しい抽出 |
 | パストラバーサル対策 | `backend/app/main.py:323` | `../` `%2e%2e` `..%2f` → 404 |
 | 機微情報（N-01） | `backend/app/config.py` の `SecretStr` | キーはレスポンス・ログ・推論入力に出さない |
+| ガードレール遮断の安全停止 | `backend/app/llm/orcarouter.py` `GuardrailBlocked` | 遮断を異常終了にせず `NEEDS_HUMAN` で止め、画面に防御動作として表示 |
+| 依存の固定（サプライチェーン） | `backend/uv.lock` をコミット | OWASP A03 |
+
+**共通基準との対応表**: [security-owasp.md](security-owasp.md)
+（**OWASP Top 10:2025** と **OWASP Top 10 for Agentic Applications 2026（ASI01–ASI10）**。
+実装の file:line・証拠・**正直な未対応**を並べている）
+
+とくに **ASI09 Human-Agent Trust Exploitation**（AIの自信ありげな要約で人間に危険な承認を
+させる）に対しては、承認画面で**実際に流す差分そのもの**と**複製環境での変更前後の実測結果**を
+見せてから承認させる、という直球の答えを実装済み。
+
+**多層防御**: 外側（OrcaRouter のガードレール／ファイアウォール）と
+内側（NetWalker の送信ゲート・スキーマ・機械照合・変更ホワイトリスト・人の承認）の
+6層。案件ごとに「どこで何件を止めたか」を画面に件数で出す。
+**ファイアウォールはシャドーモード（監視のみ）**で、実際に操作を止めているのは
+NetWalker 側である旨も画面と資料に明記している
+（[evidence/orcarouter-guardrails.md](evidence/orcarouter-guardrails.md)）。
 
 **実測**: 4通りの攻撃を実行し記録 → [evidence/T-11.md](evidence/T-11.md)
 
@@ -87,6 +104,9 @@ R は最安だが、想定済みの障害しか扱えない（判断が決定木
 | 禁止通信の遮断維持を確認 | `test_forbidden` | 直す過程で別の穴を開けていないか |
 | API障害・キー未設定 | `gateway.py` の golden フォールバック | mock モードで**外部通信なし・$0 で完走**を確認 |
 | 処理中のリセット・旧案件承認 | `backend/app/runtime.py` | `test_demo_reset.py` 4本（409で拒否） |
+| 却下で行き止まりにしない（M-12 / §14.3） | `agent.open_handoff` / `main.py` の `/handoff` `/reinvestigate` | 却下→引き継ぎ起票→受領・保留を記録、または障害を入れ直さず調べ直し |
+| 費用上限が単価非公開モデルで無限にならない | `route_policy.py` `budget_cost_usd` | Named Router・無料枠でも保守的に見積って上限が効く |
+| 構成図の読取が表記ゆれで壊れない | `vlm.py` `_map_label` | 複数行ラベルでも行単位で照合し、曖昧なら確認待ちのまま |
 
 **実測**:
 - 自動テスト **22本** green（`test_approval` 9 / `test_topology_documents` 5 /
@@ -123,9 +143,14 @@ T-21（再起動後の状態照合）未実装 / CI 未導入 / `check_plan` の
   `plan_hash = 5cb08eb5880c1c9d` が一致）。**経路は変わるが結論は揺れない**
 - ツール実行回数も方式で異なる（A 13.3回 / B 27回 / R 15回）＝**手順が固定でない証拠**
 
-**デモでの見せ場**: 単独障害と複合障害で辿る経路が変わる。
-複合障害では層別プローブ（L3疎通はOKなのにL4が落ちる）を挟んで
-「回線は生きているのに業務が通らない」を切り分ける。
+**デモでの見せ場**: **調査ログが積み上がる**ので、
+「業務通信を実測 → 構成図を照合 → 拠点ルータ → 主回線の断線 → 予備回線を層別に確認 →
+原因発見」という推論の流れがそのまま読める。
+手順書を読み上げているのではなく、**観測した結果に応じて次の手が変わっている**ことが
+画面で確認できる。単独障害と複合障害では辿る経路が実際に変わる。
+
+各行には「その判断にどのモデルがなぜ選ばれたか」も1行で出るので、
+**判断ごとにモデルが選び直されている**様子まで見える。
 
 ---
 
@@ -145,7 +170,9 @@ T-21（再起動後の状態照合）未実装 / CI 未導入 / `check_plan` の
 | 非専門家の言葉が入口 | 「受注画面が開かない」から開始 |
 | 承認は実機iPadで | `/approve`（同一Wi-Fi）。コンソール内パネルとサーバ側で二重承認を防止 |
 | 業務目線の復旧判定 | ping疎通でなく**受注画面が3回連続で開くこと** |
-| 根拠付きの引き継ぎ | 残存課題を担当候補つきで起票 |
+| 根拠付きの引き継ぎ | 残存課題を担当候補つきで起票。**却下も行き止まりにしない**（却下理由・証拠・却下した計画を引き継ぎレコードに残し、受領／保留を記録） |
+| 「AIが動く前」を隠さない | 障害注入直後に**装置が自力で切り替えた履歴**を実データで表示。「AIではありません」と明示したうえで「それでも業務は止まったまま」につなぐ |
+| 非専門家に伝わる画面 | 見出しは平易な日本語、技術名は `<small>` と技術詳細モーダルへ。4分発表で読み解きに時間を使わせない |
 
 **実測**: 実キーの gpt-4o-mini で、PDFから5機器・5接続を抽出し登録構成と全件一致
 （`comparison.ok = true`）。攻撃PDFでも抽出は正しいまま。
@@ -166,18 +193,25 @@ cd backend
 uv run python -m unittest test_demo_reset test_topology_documents \
                           test_send_gate test_approval -v
 
-# A/B/R 比較の再実測（要APIキー。--variants R なら安価）
-uv run python scripts/eval_abr.py --trials 3
+# A/B/B'/R 比較の再実測（要APIキー。--variants R なら安価）
+uv run python scripts/eval_abr.py --trials 2 --conditions T04,C0,C1
+
+# 候補モデルの実タスク検証（何を採用し、何を落としたか）
+uv run python scripts/bench_models.py
 
 # 攻撃PDFの生成（T-11の再現）
-uv run --with reportlab python scripts/gen_demo_pdf.py --attack
+cd ../frontend && node scripts/gen-demo-pdf.mjs --attack
 ```
 
-外部通信なしで動かす場合は `NW_ROUTE_MODE=mock`（golden 再生・費用0）。
+外部通信なしで動かす場合は `NW_ROUTE_MODE=mock`（録画再生・費用0）。
 
 ## 関連
 
-- [アーキテクチャ](architecture.md) — 構成図・信頼境界・データフロー
-- [A/B/R 比較実測](evaluation/results.md) / [生データ](evaluation/results.json)
-- [T-11 攻撃耐性の検証記録](evidence/T-11.md)
+- [アーキテクチャ](architecture.md) — 構成図・信頼境界・多層防御・データフロー
+- [OWASP 対応表](security-owasp.md) — Top 10:2025 / Agentic ASI01–ASI10
+- [A/B/B'/R 比較実測](evaluation/results.md) / [生データ](evaluation/results.json)
+- [候補モデルの実タスク検証](evaluation/models.md)
+- [T-11 攻撃耐性の検証記録](evidence/T-11.md) /
+  [ゲートウェイ側の記録](evidence/orcarouter-guardrails.md)
+- [デモ台本（4分版）](demo-script.md)
 - [要件定義書 §13.1](requirements/NetWalker.md)

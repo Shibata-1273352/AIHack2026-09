@@ -1,22 +1,24 @@
 {
-  "text": "{\"action\":\"probe_path\",\"aspects\":[],\"dst\":\"10.0.3.2\",\"hypothesis_update\":\"gwがr2経由でsrvに接続できない可能性がある。\",\"kind\":\"https\",\"node\":\"gw\",\"port\":443,\"reason\":\"r2経由での接続確認のため\",\"rule_comment\":\"\",\"src\":\"gw\"}",
+  "text": "{\n  \"action\": \"observe_node\",\n  \"aspects\": [\n    \"nft\"\n  ],\n  \"dst\": \"\",\n  \"hypothesis_update\": \"\",\n  \"kind\": \"\",\n  \"node\": \"r2\",\n  \"port\": 0,\n  \"reason\": \"予備経路 r2 がアクティブになっているが、HTTPS が通らない原因を特定するために、r2 の nftables ルールを確認する\"\n,\"rule_comment\":\"\",\"src\":\"\"}",
   "parsed": {
-    "action": "probe_path",
-    "aspects": [],
-    "dst": "10.0.3.2",
-    "hypothesis_update": "gwがr2経由でsrvに接続できない可能性がある。",
-    "kind": "https",
-    "node": "gw",
-    "port": 443,
-    "reason": "r2経由での接続確認のため",
+    "action": "observe_node",
+    "aspects": [
+      "nft"
+    ],
+    "dst": "",
+    "hypothesis_update": "",
+    "kind": "",
+    "node": "r2",
+    "port": 0,
+    "reason": "予備経路 r2 がアクティブになっているが、HTTPS が通らない原因を特定するために、r2 の nftables ルールを確認する",
     "rule_comment": "",
-    "src": "gw"
+    "src": ""
   },
-  "route": "openai/gpt-4o-mini",
-  "resolved_model": "gpt-4o-mini-2024-07-18",
-  "input_tokens": 1743,
-  "output_tokens": 76,
-  "cost_usd": 0.00030705,
-  "latency_ms": 1507,
+  "route": "orcarouter/fusion-flash",
+  "resolved_model": "openai/gpt-oss-120b",
+  "input_tokens": 1529,
+  "output_tokens": 413,
+  "cost_usd": 0.00011608000000000001,
+  "latency_ms": 11590,
   "schema_ok": true
 }

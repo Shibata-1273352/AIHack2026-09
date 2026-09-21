@@ -1,22 +1,24 @@
 {
-  "text": "{\"action\":\"probe_path\",\"aspects\":[],\"dst\":\"10.0.100.10\",\"hypothesis_update\":\"gwの主回線(r1)がDOWNで、冗長化制御により予備回線(r2)が使用されている。\",\"kind\":\"https\",\"node\":\"gw\",\"port\":443,\"reason\":\"予備回線経路での接続確認を行うため。\",\"rule_comment\":\"\",\"src\":\"client\"}",
+  "text": "{\n  \"action\": \"observe_node\",\n  \"aspects\": [\"failover\"],\n  \"dst\": \"\",\n  \"hypothesis_update\": \"\",\n  \"kind\": \"\",\n  \"node\": \"gw\",\n  \"port\": 0,\n  \"reason\": \"gw の冗長化状態（主回線が断たれているか）を確認し、予備経路への自動切替が発生しているかどうかを調べる\"\n  ,\"rule_comment\": \"\"\n  ,\"src\": \"\"\n}",
   "parsed": {
-    "action": "probe_path",
-    "aspects": [],
-    "dst": "10.0.100.10",
-    "hypothesis_update": "gwの主回線(r1)がDOWNで、冗長化制御により予備回線(r2)が使用されている。",
-    "kind": "https",
+    "action": "observe_node",
+    "aspects": [
+      "failover"
+    ],
+    "dst": "",
+    "hypothesis_update": "",
+    "kind": "",
     "node": "gw",
-    "port": 443,
-    "reason": "予備回線経路での接続確認を行うため。",
+    "port": 0,
+    "reason": "gw の冗長化状態（主回線が断たれているか）を確認し、予備経路への自動切替が発生しているかどうかを調べる",
     "rule_comment": "",
-    "src": "client"
+    "src": ""
   },
-  "route": "openai/gpt-4o-mini",
-  "resolved_model": "gpt-4o-mini-2024-07-18",
-  "input_tokens": 1719,
-  "output_tokens": 96,
-  "cost_usd": 0.00031544999999999994,
-  "latency_ms": 1654,
+  "route": "orcarouter/fusion-flash",
+  "resolved_model": "openai/gpt-oss-120b",
+  "input_tokens": 1486,
+  "output_tokens": 441,
+  "cost_usd": 0.00011954999999999999,
+  "latency_ms": 13724,
   "schema_ok": true
 }

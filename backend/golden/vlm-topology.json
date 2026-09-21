@@ -1,5 +1,5 @@
 {
-  "text": "{\"links\":[{\"a\":\"業務端末\",\"b\":\"拠点GW\",\"dashed\":false,\"label\":\"LAN\"},{\"a\":\"拠点GW\",\"b\":\"経路ノード r1\",\"dashed\":false,\"label\":\"主回線\"},{\"a\":\"経路ノード r1\",\"b\":\"経路ノード r2\",\"dashed\":true,\"label\":\"予備回線\"},{\"a\":\"経路ノード r1\",\"b\":\"受注サービス\",\"dashed\":false,\"label\":\"主回線\"}],\"nodes\":[{\"annotation\":\"10.0.1.1\",\"label\":\"拠点GW\",\"role\":\"gateway\",\"zone\":\"LAN\"},{\"annotation\":\"10.0.1.10\",\"label\":\"業務端末\",\"role\":\"endpoint\",\"zone\":\"LAN\"},{\"annotation\":\"10.0.100.10\",\"label\":\"受注サービス\",\"role\":\"server\",\"zone\":\"データセンター\"},{\"annotation\":\"unknown\",\"label\":\"経路ノード r1\",\"role\":\"router\",\"zone\":\"WAN\"},{\"annotation\":\"unknown\",\"label\":\"経路ノード r2\",\"role\":\"router\",\"zone\":\"WAN\"}]}",
+  "text": "{\n  \"links\": [\n    {\n      \"a\": \"業務端末\",\n      \"b\": \"拠点GW\",\n      \"dashed\": false,\n      \"label\": \"LAN\"\n    },\n    {\n      \"a\": \"拠点GW\",\n      \"b\": \"経路ノード r1\",\n      \"dashed\": false,\n      \"label\": \"主回線\"\n    },\n    {\n      \"a\": \"経路ノード r1\",\n      \"b\": \"受注サービス\",\n      \"dashed\": false,\n      \"label\": \"主回線\"\n    },\n    {\n      \"a\": \"拠点GW\",\n      \"b\": \"経路ノード r2\",\n      \"dashed\": true,\n      \"label\": \"予備回線\"\n    },\n    {\n      \"a\": \"経路ノード r2\",\n      \"b\": \"受注サービス\",\n      \"dashed\": true,\n      \"label\": \"予備回線\"\n    }\n  ],\n  \"nodes\": [\n    {\n      \"annotation\": \"10.0.1.10\",\n      \"label\": \"業務端末\",\n      \"role\": \"endpoint\",\n      \"zone\": \"拠点A\"\n    },\n    {\n      \"annotation\": \"10.0.1.1\",\n      \"label\": \"拠点GW\",\n      \"role\": \"gateway\",\n      \"zone\": \"拠点A\"\n    },\n    {\n      \"annotation\": \"主回線\",\n      \"label\": \"経路ノード r1\",\n      \"role\": \"router\",\n      \"zone\": \"WAN\"\n    },\n    {\n      \"annotation\": \"予備回線\",\n      \"label\": \"経路ノード r2\",\n      \"role\": \"router\",\n      \"zone\": \"WAN\"\n    },\n    {\n      \"annotation\": \"order.example.com (10.0.100.10)\",\n      \"label\": \"受注サービス\",\n      \"role\": \"server\",\n      \"zone\": \"データセンター\"\n    }\n  ]\n}",
   "parsed": {
     "links": [
       {
@@ -16,55 +16,61 @@
       },
       {
         "a": "経路ノード r1",
+        "b": "受注サービス",
+        "dashed": false,
+        "label": "主回線"
+      },
+      {
+        "a": "拠点GW",
         "b": "経路ノード r2",
         "dashed": true,
         "label": "予備回線"
       },
       {
-        "a": "経路ノード r1",
+        "a": "経路ノード r2",
         "b": "受注サービス",
-        "dashed": false,
-        "label": "主回線"
+        "dashed": true,
+        "label": "予備回線"
       }
     ],
     "nodes": [
       {
-        "annotation": "10.0.1.1",
-        "label": "拠点GW",
-        "role": "gateway",
-        "zone": "LAN"
-      },
-      {
         "annotation": "10.0.1.10",
         "label": "業務端末",
         "role": "endpoint",
-        "zone": "LAN"
+        "zone": "拠点A"
       },
       {
-        "annotation": "10.0.100.10",
-        "label": "受注サービス",
-        "role": "server",
-        "zone": "データセンター"
+        "annotation": "10.0.1.1",
+        "label": "拠点GW",
+        "role": "gateway",
+        "zone": "拠点A"
       },
       {
-        "annotation": "unknown",
+        "annotation": "主回線",
         "label": "経路ノード r1",
         "role": "router",
         "zone": "WAN"
       },
       {
-        "annotation": "unknown",
+        "annotation": "予備回線",
         "label": "経路ノード r2",
         "role": "router",
         "zone": "WAN"
+      },
+      {
+        "annotation": "order.example.com (10.0.100.10)",
+        "label": "受注サービス",
+        "role": "server",
+        "zone": "データセンター"
       }
     ]
   },
-  "route": "openai/gpt-4o-mini",
-  "resolved_model": "gpt-4o-mini-2024-07-18",
-  "input_tokens": 37160,
-  "output_tokens": 234,
-  "cost_usd": 0.0057144,
-  "latency_ms": 3054,
+  "route": "orcarouter/fusion-flash",
+  "resolved_model": "qwen/qwen3.7-flash",
+  "input_tokens": 1068,
+  "output_tokens": 981,
+  "cost_usd": 0.00015957,
+  "latency_ms": 7640,
   "schema_ok": true
 }

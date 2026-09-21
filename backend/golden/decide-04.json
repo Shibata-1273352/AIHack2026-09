@@ -1,22 +1,28 @@
 {
-  "text": "{\"action\":\"probe_path\",\"aspects\":[],\"dst\":\"10.0.100.10\",\"hypothesis_update\":\"gwからsrvへの経路に問題がある可能性があるため、r2経由での接続を確認する必要がある。\",\"kind\":\"https\",\"node\":\"gw\",\"port\":443,\"reason\":\"r2経由での接続確認が必要。\",\"rule_comment\":\"\",\"src\":\"client\"}",
+  "text": "{\n  \"action\": \"propose_fix\",\n  \"aspects\": [\n    \"route\",\n    \"addr\",\n    \"nft\",\n    \"listen\",\n    \"failover\"\n  ],\n  \"dst\": \"\",\n  \"hypothesis_update\": \"gw の冗長化で予備経路 r2 に切替わっているが、r2 の nftables に client → srv への 443 を DROP する BAD-ACL-443 が存在し、HTTPS が遮断されている。ACL ルールを削除すれば業務復帰が見込める。\",\n  \"kind\": \"\",\n  \"node\": \"r2\",\n  \"port\": 0,\n  \"reason\": \"r2 に BAD-ACL-443 という 443 ドロップルールがあり、現在の通信経路が r2 であるため、HTTPS がブロックされている。\"\n  ,\n  \"rule_comment\": \"BAD-ACL-443\"\n  ,\n  \"src\": \"\"\n}",
   "parsed": {
-    "action": "probe_path",
-    "aspects": [],
-    "dst": "10.0.100.10",
-    "hypothesis_update": "gwからsrvへの経路に問題がある可能性があるため、r2経由での接続を確認する必要がある。",
-    "kind": "https",
-    "node": "gw",
-    "port": 443,
-    "reason": "r2経由での接続確認が必要。",
-    "rule_comment": "",
-    "src": "client"
+    "action": "propose_fix",
+    "aspects": [
+      "route",
+      "addr",
+      "nft",
+      "listen",
+      "failover"
+    ],
+    "dst": "",
+    "hypothesis_update": "gw の冗長化で予備経路 r2 に切替わっているが、r2 の nftables に client → srv への 443 を DROP する BAD-ACL-443 が存在し、HTTPS が遮断されている。ACL ルールを削除すれば業務復帰が見込める。",
+    "kind": "",
+    "node": "r2",
+    "port": 0,
+    "reason": "r2 に BAD-ACL-443 という 443 ドロップルールがあり、現在の通信経路が r2 であるため、HTTPS がブロックされている。",
+    "rule_comment": "BAD-ACL-443",
+    "src": ""
   },
-  "route": "openai/gpt-4o-mini",
-  "resolved_model": "gpt-4o-mini-2024-07-18",
-  "input_tokens": 1767,
-  "output_tokens": 90,
-  "cost_usd": 0.00031905000000000003,
-  "latency_ms": 1409,
+  "route": "orcarouter/fusion-flash",
+  "resolved_model": "openai/gpt-oss-120b",
+  "input_tokens": 1633,
+  "output_tokens": 486,
+  "cost_usd": 0.00013161000000000002,
+  "latency_ms": 12090,
   "schema_ok": true
 }

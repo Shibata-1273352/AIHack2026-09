@@ -1,29 +1,24 @@
 {
-  "text": "{\"action\":\"observe_node\",\"aspects\":[\"link\",\"route\",\"addr\",\"nft\",\"listen\",\"failover\"],\"dst\":\"\",\"hypothesis_update\":\"\",\"kind\":\"\",\"node\":\"gw\",\"port\":0,\"reason\":\"拠点GWの状態を確認するため。特に冗長化制御と経路の状態を調査する必要がある。\",\"rule_comment\":\"\",\"src\":\"\"}",
+  "text": "{\n  \"action\": \"probe_path\",\n  \"aspects\": [\n    \"link\"\n  ],\n  \"dst\": \"10.0.100.10\",\n  \"hypothesis_update\": \"\",\n  \"kind\": \"tcp\",\n  \"node\": \"\",\n  \"port\": 443,\n  \"reason\": \"業務端末から受注サーバへのHTTPS (443) 接続ができるか確認し、主経路・予備経路の到達性を初歩的に検証する\"\n  ,\n  \"rule_comment\": \"\",\n  \"src\": \"client\"\n}",
   "parsed": {
-    "action": "observe_node",
+    "action": "probe_path",
     "aspects": [
-      "link",
-      "route",
-      "addr",
-      "nft",
-      "listen",
-      "failover"
+      "link"
     ],
-    "dst": "",
+    "dst": "10.0.100.10",
     "hypothesis_update": "",
-    "kind": "",
-    "node": "gw",
-    "port": 0,
-    "reason": "拠点GWの状態を確認するため。特に冗長化制御と経路の状態を調査する必要がある。",
+    "kind": "tcp",
+    "node": "",
+    "port": 443,
+    "reason": "業務端末から受注サーバへのHTTPS (443) 接続ができるか確認し、主経路・予備経路の到達性を初歩的に検証する",
     "rule_comment": "",
-    "src": ""
+    "src": "client"
   },
-  "route": "openai/gpt-4o-mini",
-  "resolved_model": "gpt-4o-mini-2024-07-18",
-  "input_tokens": 1473,
-  "output_tokens": 84,
-  "cost_usd": 0.00027134999999999995,
-  "latency_ms": 2854,
+  "route": "orcarouter/fusion-flash",
+  "resolved_model": "openai/gpt-oss-120b",
+  "input_tokens": 1462,
+  "output_tokens": 247,
+  "cost_usd": 8.585e-05,
+  "latency_ms": 7185,
   "schema_ok": true
 }

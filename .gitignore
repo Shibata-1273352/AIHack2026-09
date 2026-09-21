@@ -24,7 +24,7 @@ __pycache__/
 *.pyc
 .venv/
 .uv-cache/
-uv.lock
+# uv.lock は依存を固定するためコミットする（OWASP A03 サプライチェーン対策）
 
 # 実行時データ
 *.sqlite3

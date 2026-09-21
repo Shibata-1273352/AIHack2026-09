@@ -1,0 +1,76 @@
+{
+  "text": "{\n  \"links\": [\n    {\n      \"a\": \"client\",\n      \"b\": \"gw\",\n      \"dashed\": false,\n      \"label\": \"LAN\"\n    },\n    {\n      \"a\": \"gw\",\n      \"b\": \"r1\",\n      \"dashed\": false,\n      \"label\": \"主回線 primary\"\n    },\n    {\n      \"a\": \"gw\",\n      \"b\": \"r2\",\n      \"dashed\": true,\n      \"label\": \"予備回線 backup\"\n    },\n    {\n      \"a\": \"r1\",\n      \"b\": \"srv\",\n      \"dashed\": false,\n      \"label\": \"主回線 primary\"\n    },\n    {\n      \"a\": \"r2\",\n      \"b\": \"srv\",\n      \"dashed\": true,\n      \"label\": \"予備回線 backup\"\n    }\n  ],\n  \"nodes\": [\n    {\n      \"annotation\": \"業務端末 10.0.1.10/24\",\n      \"label\": \"client\",\n      \"role\": \"endpoint\",\n      \"zone\": \"拠点A Site A\"\n    },\n    {\n      \"annotation\": \"拠点GW 10.0.1.1/24\",\n      \"label\": \"gw\",\n      \"role\": \"gateway\",\n      \"zone\": \"拠点A Site A\"\n    },\n    {\n      \"annotation\": \"主回線ルータ router / primary\",\n      \"label\": \"r1\",\n      \"role\": \"router\",\n      \"zone\": \"回線区間 WAN\"\n    },\n    {\n      \"annotation\": \"予備回線ルータ router / backup\",\n      \"label\": \"r2\",\n      \"role\": \"router\",\n      \"zone\": \"回線区間 WAN\"\n    },\n    {\n      \"annotation\": \"受注サービス 10.0.100.10/32 (lo)\",\n      \"label\": \"srv\",\n      \"role\": \"server\",\n      \"zone\": \"データセンター Data center\"\n    }\n  ]\n}",
+  "parsed": {
+    "links": [
+      {
+        "a": "client",
+        "b": "gw",
+        "dashed": false,
+        "label": "LAN"
+      },
+      {
+        "a": "gw",
+        "b": "r1",
+        "dashed": false,
+        "label": "主回線 primary"
+      },
+      {
+        "a": "gw",
+        "b": "r2",
+        "dashed": true,
+        "label": "予備回線 backup"
+      },
+      {
+        "a": "r1",
+        "b": "srv",
+        "dashed": false,
+        "label": "主回線 primary"
+      },
+      {
+        "a": "r2",
+        "b": "srv",
+        "dashed": true,
+        "label": "予備回線 backup"
+      }
+    ],
+    "nodes": [
+      {
+        "annotation": "業務端末 10.0.1.10/24",
+        "label": "client",
+        "role": "endpoint",
+        "zone": "拠点A Site A"
+      },
+      {
+        "annotation": "拠点GW 10.0.1.1/24",
+        "label": "gw",
+        "role": "gateway",
+        "zone": "拠点A Site A"
+      },
+      {
+        "annotation": "主回線ルータ router / primary",
+        "label": "r1",
+        "role": "router",
+        "zone": "回線区間 WAN"
+      },
+      {
+        "annotation": "予備回線ルータ router / backup",
+        "label": "r2",
+        "role": "router",
+        "zone": "回線区間 WAN"
+      },
+      {
+        "annotation": "受注サービス 10.0.100.10/32 (lo)",
+        "label": "srv",
+        "role": "server",
+        "zone": "データセンター Data center"
+      }
+    ]
+  },
+  "route": "orcarouter/fusion-flash",
+  "resolved_model": "qwen/qwen3.7-flash",
+  "input_tokens": 2799,
+  "output_tokens": 999,
+  "cost_usd": 0.00021384,
+  "latency_ms": 14582,
+  "schema_ok": true
+}

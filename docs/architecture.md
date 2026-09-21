@@ -83,6 +83,50 @@ flowchart LR
 - 変更操作は `sim/ctl.py:295 check_plan` を必ず通る。LLM が生成した任意コマンドは実行しない
 - `rule_comment` は `[A-Za-z0-9_\-]{1,64}` に限定（コマンド注入対策）
 - 冗長化制御 `failover.py` は AI と独立に動く。切替が起きても AI の手柄にしない
+  （画面にも「機器が自動切替（AIの操作ではありません）」と明示する）
+
+## 多層防御（ゲートウェイ層 + アプリ層）
+
+安全性は1枚の壁ではなく、**性質の違う6層**で担保する。外側（OrcaRouter）と
+内側（NetWalker）に分かれているので、片方をすり抜けても、もう片方の記録に残る。
+
+```mermaid
+flowchart TB
+    subgraph gw["外側: ゲートウェイ（OrcaRouter）"]
+        G1["① Guardrails（内容）<br/>キーワード・正規表現・PII・意味判定<br/>block / mask / flag"]
+        G2["Firewall（行動）<br/>inbound / response / MCP / egress<br/><b>シャドーモード＝監視のみ</b>"]
+    end
+    subgraph app["内側: NetWalker（実際に遮断するのはここ）"]
+        N1["② 送信ゲート<br/>data_class が許可外なら<br/>プロバイダ呼出<b>前</b>に遮断"]
+        N2["③ 構造化出力スキーマ<br/>型に合わない応答は採用しない"]
+        N3["④ 登録機器表との機械照合<br/>図から読んだ機器名を登録IDへ<br/>対応しなければ確認待ち"]
+        N4["⑤ 変更操作のホワイトリスト<br/>check_plan（node/table/chain/comment）"]
+        N5["⑥ 人の承認<br/>実差分＋複製環境の実測結果を見て決裁"]
+    end
+
+    IN["構成図PDF・観測サマリ"] --> N1 --> G1 --> G2 --> LLM["モデル"]
+    LLM --> N2 --> N3 --> PLAN["変更計画"] --> N4 --> N5 --> APPLY["対象環境へ適用"]
+```
+
+| 層 | 誰が | 止めるもの | 実装 |
+|---|---|---|---|
+| ① ガードレール | OrcaRouter | 送信内容（注入・PII・ジェイルブレイク） | OrcaRouter 側の設定 |
+| ② 送信ゲート | NetWalker | 外部送信不可のデータ | `backend/app/llm/gateway.py:90` |
+| ③ スキーマ | NetWalker | 型に合わない応答 | `GRAPH_SCHEMA` / `DECIDE_SCHEMA` |
+| ④ 機械照合 | NetWalker | 図と実態の食い違い | `backend/app/vlm.py` `compare_graph` |
+| ⑤ ホワイトリスト | NetWalker | 許可範囲外の変更操作 | `sim/ctl.py:295` `check_plan` |
+| ⑥ 人の承認 | 人間 | 人が納得しない変更 | `backend/app/approval.py` |
+
+**正直に書くこと**: OrcaRouter のファイアウォールは**シャドーモード（監視のみ）**で
+運用している。評価と記録は本番同様に行うが、遮断系の判定は `audit` に格下げされる。
+つまり**実際に操作を止めているのは ④⑤⑥**である。ゲートウェイの記録は
+**独立した第二の判定**として、NetWalker の判断と突き合わせるために使う。
+
+案件ごとに「どの層が何件を通し、どこで何件を止めたか」は画面の
+「技術詳細 → この案件で通った防御層」で確認できる
+（`frontend/src/components/DefenseLayers.tsx`）。
+共通基準との対応は [security-owasp.md](security-owasp.md)、
+実測記録は [evidence/orcarouter-guardrails.md](evidence/orcarouter-guardrails.md)。
 
 ## 調査から復旧までのデータフロー
 
@@ -165,21 +209,47 @@ flowchart TB
     gate -->|"はい"| budget{{"費用上限<br/>使用済み + 予約額 ≤ 上限?"}}
     budget -->|"超過"| exceeded["BudgetExceeded<br/>（新規呼出を停止）"]
     budget -->|"OK"| mode{{"NW_ROUTE_MODE"}}
-    mode -->|"mock"| golden["golden 再生（外部通信なし）"]
-    mode -->|"live / record"| routes["候補列を順に試行<br/>方式A: gpt-5 固定<br/>方式B: gpt-4o-mini → gemini-2.5-flash → gpt-5"]
-    routes -->|"成功"| ok["応答（スキーマ検証）"]
-    routes -->|"失敗"| fallback["golden へフォールバック<br/>（outcome に記録して画面表示）"]
-    ok & golden & fallback --> record["model_run 記録<br/>route・モデル・トークン・費用・レイテンシ"]
+    mode -->|"mock"| golden["録画再生（外部通信なし）"]
+    mode -->|"live / record"| routes["候補列を順に試行<br/>方式A: gpt-5 固定<br/>方式B: orcarouter/fusion-flash（製品のルーティング）<br/>方式B': 検証済み固定モデルを自前で順に"]
+    routes -->|"ガードレール遮断(400)"| guard["GuardrailBlocked<br/>NEEDS_HUMAN で安全停止<br/>（候補を替えて再送しない）"]
+    routes -->|"成功"| ok["応答（スキーマ検証）<br/>X-Orca-* からルーティング判断を取得"]
+    routes -->|"失敗"| fallback["録画再生へフォールバック<br/>（outcome に記録して画面表示）"]
+    ok & golden & fallback --> record["model_run 記録<br/>router・戦略・解決先モデル・トークン・レイテンシ"]
+    record --> cost["案件終了時に GET /v1/generation<br/>→ <b>確定請求額</b>を埋める"]
 ```
 
-キー未設定・API障害でも golden 再生でデモが成立する。ただし**フォールバックした事実は
+キー未設定・API障害でも録画再生でデモが成立する。ただし**フォールバックした事実は
 隠さず** `outcome` と画面のルート表示に残す。
 
-方式A/B/Rの実測比較は [evaluation/results.md](evaluation/results.md) を参照。
+### 費用の二本立て（誠実性のため分ける）
+
+| | 何を使うか | なぜ |
+|---|---|---|
+| **呼出前の予算判定** | `route_policy.yaml` の単価表 × トークン数（推定） | 実費は事後にしか出ないため |
+| **表示・評価** | `GET /v1/generation` の `total_cost`（**確定請求額**） | 推定で語らないため |
+
+Named Router や無料枠は単価が公開されない。**単価不明を0円扱いにすると費用上限が
+無限になる**ため、予算判定には保守的な上振れ単価（`unknown_model_pricing`）を使う
+（`route_policy.py` の `budget_cost_usd`）。
+
+### ルーティング判断の可視化
+
+`orcarouter.py` は `with_raw_response` で `X-Orca-Route` / `X-Orca-Router` /
+`X-Orca-Resolved-Model` / `X-Orca-Request-Id` を取得する。
+画面の調査ログには判断ごとに
+「OrcaRouter が balanced 戦略で ◯◯ を選択（fallback 0）」と1行で流れるので、
+**判断ごとに違うモデルが選ばれる様子**がそのまま見える。
+
+候補モデルは `backend/scripts/bench_models.py` で実タスク検証してから採用する
+（[evaluation/models.md](evaluation/models.md)）。方式A/B/B'/Rの実測比較は
+[evaluation/results.md](evaluation/results.md) を参照。
 
 ## 関連ドキュメント
 
 - [審査5項目アピール](judging.md) — 実装証拠・デモでの見せ場・実測値
-- [A/B/R 比較実測](evaluation/results.md) — コストパフォーマンスの根拠
+- [A/B/B'/R 比較実測](evaluation/results.md) — コストパフォーマンスの根拠
+- [候補モデルの実タスク検証](evaluation/models.md) — 何を採用し、何を落としたか
+- [OWASP 対応表](security-owasp.md) — Top 10:2025 / Agentic ASI01–ASI10
 - [T-11 攻撃耐性の検証記録](evidence/T-11.md) — プロンプトインジェクション・API直叩き
-- [要件定義書](requirements/NetWalker.md) / [UI仕様](design/ui-spec.md) / [デモ台本](demo-script.md)
+- [ゲートウェイ側の記録](evidence/orcarouter-guardrails.md) — ガードレール／ファイアウォール
+- [要件定義書](requirements/NetWalker.md) / [UI仕様](design/ui-spec.md) / [デモ台本（4分版）](demo-script.md)

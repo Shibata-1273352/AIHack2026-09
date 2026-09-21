@@ -140,11 +140,20 @@ def _run_investigation(incident_id: str) -> None:
 
 
 def _finalize_costs(incident_id: str) -> None:
-    """案件区切りで確定請求額（GET /v1/generation）を引く。失敗しても本筋を止めない。"""
-    try:
-        gateway.finalize_actual_costs(incident_id)
-    except Exception:  # noqa: BLE001
-        pass
+    """確定請求額（GET /v1/generation）を別スレッドで引く。
+
+    **ワーカー枠を握ったまま実行してはいけない。** 費用照会は数秒かかるうえ、
+    承認待ちへ入った直後に承認されると `runtime.workers` が空でないため 409 になる
+    （リハーサル台本も承認待ち検知の直後に承認する）。費用照会は読取と記録だけの
+    後処理なので、調査スレッドから切り離して走らせる。
+    """
+    def _run() -> None:
+        try:
+            gateway.finalize_actual_costs(incident_id)
+        except Exception:  # noqa: BLE001  費用が埋まらなくても本筋は止めない
+            pass
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 # ================================================================ scripted 決定木

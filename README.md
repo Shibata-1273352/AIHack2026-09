@@ -7,8 +7,12 @@ AIエージェントが**実通信を伴う擬似ネットワーク**を調査�
 
 - **アーキテクチャ**: [docs/architecture.md](docs/architecture.md)（構成図・信頼境界・データフロー）
 - **審査5項目アピール**: [docs/judging.md](docs/judging.md)（実装証拠・実測値の索引）
-- **A/B/R 比較実測**: [docs/evaluation/results.md](docs/evaluation/results.md)
+- **デモ台本（4分版）**: [docs/demo-script.md](docs/demo-script.md)
+- **A/B/B'/R 比較実測**: [docs/evaluation/results.md](docs/evaluation/results.md)
+- **候補モデルの実タスク検証**: [docs/evaluation/models.md](docs/evaluation/models.md)
+- **OWASP 対応表（Top 10:2025 / Agentic ASI01–ASI10）**: [docs/security-owasp.md](docs/security-owasp.md)
 - **攻撃耐性の検証記録**: [docs/evidence/T-11.md](docs/evidence/T-11.md)
+  / [ゲートウェイ側の記録](docs/evidence/orcarouter-guardrails.md)
 - **要件定義書**: [docs/requirements/NetWalker.md](docs/requirements/NetWalker.md)
 
 ## 構成
@@ -123,7 +127,17 @@ cp backend/.env.example backend/.env
 - **プロンプトインジェクション対策**: 図中・抽出テキストの命令はデータとして扱う旨を
   システムプロンプトで指示し、出力を JSON Schema に固定した上で、
   **登録機器表との機械照合**を最終ゲートにする（モデルの善良さに依存しない）
+- **多層防御（ゲートウェイ＋アプリ）**: OrcaRouter 側のガードレール／ファイアウォールと、
+  NetWalker 側の送信ゲート・スキーマ・機械照合・変更ホワイトリスト・人の承認。
+  案件ごとに「どの層が何件を通し、どこで止めたか」を画面に件数で出す。
+  **ファイアウォールはシャドーモード（監視のみ）**で、実際に操作を止めているのは
+  NetWalker 側であることも明記している
+- **ガードレール遮断は安全停止**: ゲートウェイが送信内容を遮断した場合、
+  異常終了ではなく `NEEDS_HUMAN` で止め、「ゲートウェイが遮断しました（AIには渡っていません）」と表示する
+- 共通基準との対応表: [docs/security-owasp.md](docs/security-owasp.md)
+  （OWASP Top 10:2025 / Agentic Applications 2026 ASI01–ASI10。**未対応も明記**）
 - 攻撃の実測記録: [docs/evidence/T-11.md](docs/evidence/T-11.md)
+  / [ゲートウェイ側](docs/evidence/orcarouter-guardrails.md)
 
 ### 機微情報の扱い（N-01）
 
@@ -133,12 +147,29 @@ cp backend/.env.example backend/.env
 
 ## 費用の考え方
 
-- 費用は OrcaRouter が原価を返さないため、`route_policy.yaml` の単価表 × 実トークン数で算出する。
-  単価不明のモデルは加算せず、0 と偽らない
+費用は**二本立て**で扱う。混ぜると誠実さを失うため、画面でも区別して出す。
+
+- **表示・評価は実請求額**。OrcaRouter の `GET /v1/generation?id=<X-Orca-Request-Id>` が
+  返す `total_cost`（USD・確定額）を案件終了時にまとめて引く。推定ではない
+- **呼出前の予算判定は単価表**（`route_policy.yaml`）。実費は事後にしか出ないため。
+  Named Router や無料枠は単価が公開されないので、**単価不明を0円扱いにして上限が
+  無限になる穴**を塞ぐため保守的に上振れ見積りする（`unknown_model_pricing`）
 - 上限は2本立て。**案件あたり 0.50 USD**（`per_incident_usd`）と、
   **構成図PDF 1件あたり 0.20 USD**（`per_document_usd`）。PDF解析は案件成立前に発生するため別枠
 - 上限に達する前に新規呼出を止める（`BudgetExceeded`）。超過してから気づく作りにしない
 - 方式別の実測費用は [docs/evaluation/results.md](docs/evaluation/results.md)
+
+### モデルの選び方（安い＝良い、ではない）
+
+候補モデルは `backend/scripts/bench_models.py` で**実タスク**（判断1ステップと
+構成図読取）に通し、合格したものだけを候補列と画面の選択肢に載せている。
+
+実測（2026-09-22）では、**単価が最安のモデルは構造化出力に不合格**だった。
+また旧設定の第一候補は構成図の接続を5本中4本しか読めなかった。
+結果は [docs/evaluation/models.md](docs/evaluation/models.md)。
+
+画面上部の「AIモデル」から切り替えられる（検証に合格したモデルのみ・
+処理中は不可・次の案件から適用・メモリ上書きで永続化しない）。
 
 ## 制約・既知の限界
 
@@ -168,9 +199,19 @@ PDF未選択の場合は従来の組み込み構成図を使います。
 - 機器だけでなく接続も登録表と照合。不一致・不正応答・途中ページの失敗は明示し、そのPDFでは調査開始できません。登録構成の自動上書きはしません。
 - 解析結果を案件の証拠と判断入力に引き継ぎます。リセット後も同じ画面内の選択は保持され、再推論せず利用できます。画面を再読込した場合は再選択してください。
 - APIキーはルートまたは`backend/.env`の`ORCAROUTER_API_KEY`（互換名`ORCA_API_KEY`）から読み込みます。キーはレスポンスに含みません。
-- PDF再生成: ReportLabを導入したPythonで `python backend/scripts/gen_demo_pdf.py`。
+- PDF再生成: `cd frontend && node scripts/gen-demo-pdf.mjs`（HTML/CSS を Playwright で印刷。
+  アプリと同じ配色・フォントで作るのでデザイン言語が統一される）
+- 攻撃PDF（プロンプトインジェクション検証用）の生成: `node scripts/gen-demo-pdf.mjs --attack`
 - 回帰確認: `cd backend && uv run python -m unittest test_demo_reset test_topology_documents -v`。
-- 攻撃PDF（プロンプトインジェクション検証用）の生成: `uv run --with reportlab python backend/scripts/gen_demo_pdf.py --attack`
 
-実接続確認では `gpt-4o-mini-2024-07-18` による5機器・5接続の抽出と登録構成の一致を確認しました
+> **PDFを作り直したら golden を録り直すこと。** 録画キーが
+> `pdf-v1-<sha256>-1` なので、PDFが変わると mock モードで空応答になり解析に失敗する。
+> 順序: PDF確定 → 実キーで5機器5接続の一致を確認 → `NW_ROUTE_MODE=record` で再収録 → mock で再確認。
+
+実接続確認（2026-09-22）では、Named Router 経由（`orcarouter/fusion-flash` →
+`qwen/qwen3.7-flash`）で5機器・5接続の抽出と登録構成の一致を確認しました
 （命令文を埋め込んだ攻撃PDFでも抽出結果は正しいまま — [T-11.md](docs/evidence/T-11.md)）。
+
+なお図の1機器が複数行（機器ID・和名・IPアドレス）で描かれていると、読取結果も
+複数行ラベルで返ることがある。登録機器表との照合は**行単位でも突き合わせ、
+一意に1台へ収束するときだけ**対応付ける（曖昧なものは確認待ちのまま）。

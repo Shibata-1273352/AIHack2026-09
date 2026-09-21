@@ -74,12 +74,26 @@ def _registered() -> dict[str, Any]:
             encoding="utf-8"))
 
 
+def _norm(value: str) -> str:
+    return value.strip().lower().replace(" ", "").replace("　", "")
+
+
 def _map_label(label: str, registered: dict[str, Any]) -> str | None:
-    """図上のラベル → 登録済み機器ID。対応しなければ None（確認待ち）。"""
-    norm = label.strip().lower().replace(" ", "").replace("　", "")
-    matches = {n["id"] for n in registered["nodes"]
-               if norm in {a.lower().replace(" ", "").replace("　", "")
-                           for a in [n["id"], n["label"], *n["aliases"]]}}
+    """図上のラベル → 登録済み機器ID。対応しなければ None（確認待ち）。
+
+    図の1ノードが複数行（機器ID・和名・IPアドレス）で描かれていると、読取結果も
+    `"client\\n業務端末\\n10.0.1.10/24"` のような複数行ラベルで返る。行単位でも
+    照合し、**一意に1台へ収束するときだけ**対応付ける。複数台に当たる（＝曖昧な）
+    ラベルは従来どおり確認待ちのままにする。
+    """
+    index: dict[str, set[str]] = {}
+    for n in registered["nodes"]:
+        for alias in [n["id"], n["label"], *n["aliases"]]:
+            index.setdefault(_norm(alias), set()).add(n["id"])
+
+    matches: set[str] = set()
+    for part in [label, *label.replace("\r", "\n").split("\n")]:
+        matches |= index.get(_norm(part), set())
     return next(iter(matches)) if len(matches) == 1 else None
 
 
