@@ -48,10 +48,11 @@ command -v uv >/dev/null || { err "uv が必要です (brew install uv)"; exit 1
 pkill -f "uvicorn app.main:app" 2>/dev/null || true
 
 # ---- シミュレータ ----
-if ! docker image inspect netwalker-sim >/dev/null 2>&1; then
-  say "シミュレータイメージをビルドします…"
-  docker build -t netwalker-sim sim/
-fi
+# sim/ の変更（制御API・冗長化制御デーモン）を確実に反映するため毎回ビルドする。
+# Docker のレイヤキャッシュが効くので、変更が無ければ数秒で終わる。
+# 「イメージがあればスキップ」にすると、更新しても古い sim で動き続けてしまう。
+say "シミュレータイメージをビルドします（変更が無ければキャッシュで即完了）…"
+docker build -q -t netwalker-sim sim/ >/dev/null || { err "シミュレータのビルドに失敗しました"; exit 1; }
 docker rm -f nwsim >/dev/null 2>&1 || true
 say "シミュレータを起動します（privileged / 127.0.0.1:${SIM_PORT}）…"
 docker run -d --name nwsim --privileged -p "127.0.0.1:${SIM_PORT}:9000" \

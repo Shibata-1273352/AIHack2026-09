@@ -40,3 +40,7 @@ logs/
 Thumbs.db
 .idea/
 .vscode/
+# 動画・画像
+docs/media/*.webm
+docs/media/*.mp4
+frontend/shots/
