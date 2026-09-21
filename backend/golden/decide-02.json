@@ -1,0 +1,22 @@
+{
+  "text": "{\"action\":\"probe_path\",\"aspects\":[],\"dst\":\"10.0.100.10\",\"hypothesis_update\":\"gwの主回線(r1)がDOWNで、冗長化制御により予備回線(r2)が使用されている。\",\"kind\":\"https\",\"node\":\"gw\",\"port\":443,\"reason\":\"予備回線経路での接続確認を行うため。\",\"rule_comment\":\"\",\"src\":\"client\"}",
+  "parsed": {
+    "action": "probe_path",
+    "aspects": [],
+    "dst": "10.0.100.10",
+    "hypothesis_update": "gwの主回線(r1)がDOWNで、冗長化制御により予備回線(r2)が使用されている。",
+    "kind": "https",
+    "node": "gw",
+    "port": 443,
+    "reason": "予備回線経路での接続確認を行うため。",
+    "rule_comment": "",
+    "src": "client"
+  },
+  "route": "openai/gpt-4o-mini",
+  "resolved_model": "gpt-4o-mini-2024-07-18",
+  "input_tokens": 1719,
+  "output_tokens": 96,
+  "cost_usd": 0.00031544999999999994,
+  "latency_ms": 1654,
+  "schema_ok": true
+}

@@ -49,11 +49,23 @@ class RoutePolicy:
         self.version = raw.get("version", "unknown")
         self._profiles = raw["profiles"]
         self._pricing = raw.get("pricing", {})
-        self.budget_per_incident_usd = raw.get("budget", {}).get(
-            "per_incident_usd", 0.50)
+        self._variants = raw.get("variants", {})
+        budget = raw.get("budget", {})
+        self.budget_per_incident_usd = budget.get("per_incident_usd", 0.50)
+        self.budget_per_document_usd = budget.get("per_document_usd", 0.20)
+
+    @property
+    def variant(self) -> str:
+        """比較評価の方式（a|b）。既定は b（段階別選択）。"""
+        from ..config import settings
+        return settings.nw_route_variant
 
     def resolve(self, name: str) -> ResolvedProfile:
         p = self._profiles[name]
+        # 方式A等の上書き（候補列のみ差し替え、単価表・上限は共通）
+        override = (self._variants.get(self.variant, {}).get("profiles") or {}).get(name)
+        if override:
+            p = {**p, **override}
         return ResolvedProfile(
             profile=name,
             routes=list(p["routes"]),

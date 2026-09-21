@@ -1,0 +1,22 @@
+{
+  "text": "{\"action\":\"test_business\",\"aspects\":[],\"dst\":\"\",\"hypothesis_update\":\"\",\"kind\":\"\",\"node\":\"\",\"port\":0,\"reason\":\"業務端末からのHTTPS接続が成功したため、業務テストを再実施します。\",\"rule_comment\":\"\",\"src\":\"client\"}",
+  "parsed": {
+    "action": "test_business",
+    "aspects": [],
+    "dst": "",
+    "hypothesis_update": "",
+    "kind": "",
+    "node": "",
+    "port": 0,
+    "reason": "業務端末からのHTTPS接続が成功したため、業務テストを再実施します。",
+    "rule_comment": "",
+    "src": "client"
+  },
+  "route": "openai/gpt-4o-mini",
+  "resolved_model": "gpt-4o-mini-2024-07-18",
+  "input_tokens": 1838,
+  "output_tokens": 58,
+  "cost_usd": 0.0003105,
+  "latency_ms": 1184,
+  "schema_ok": true
+}

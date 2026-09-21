@@ -1,0 +1,22 @@
+{
+  "text": "{\"action\":\"probe_path\",\"aspects\":[],\"dst\":\"10.0.3.2\",\"hypothesis_update\":\"gwからr2への経路に問題がある可能性があるため、r2への接続を確認する。\",\"kind\":\"https\",\"node\":\"gw\",\"port\":443,\"reason\":\"r2への接続確認のため\",\"rule_comment\":\"\" ,\"src\":\"gw\"}",
+  "parsed": {
+    "action": "probe_path",
+    "aspects": [],
+    "dst": "10.0.3.2",
+    "hypothesis_update": "gwからr2への経路に問題がある可能性があるため、r2への接続を確認する。",
+    "kind": "https",
+    "node": "gw",
+    "port": 443,
+    "reason": "r2への接続確認のため",
+    "rule_comment": "",
+    "src": "gw"
+  },
+  "route": "openai/gpt-4o-mini",
+  "resolved_model": "gpt-4o-mini-2024-07-18",
+  "input_tokens": 1791,
+  "output_tokens": 83,
+  "cost_usd": 0.00031845,
+  "latency_ms": 2045,
+  "schema_ok": true
+}

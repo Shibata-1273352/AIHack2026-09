@@ -1,0 +1,254 @@
+{
+  "generated_at": "2026-09-21 22:37 JST",
+  "route_mode": "live",
+  "trials_per_variant": 3,
+  "order": [
+    "A",
+    "B",
+    "R"
+  ],
+  "summary": {
+    "A": {
+      "trials": 3,
+      "success": 3,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 124.67,
+      "mean_llm_calls": 5.33,
+      "mean_tool_calls": 13.33,
+      "mean_tokens": 12196.0,
+      "total_cost_usd": 0.179137,
+      "mean_cost_usd": 0.059712,
+      "cost_per_success_usd": 0.059712,
+      "models": [
+        "gpt-5-2025-08-07"
+      ],
+      "fallbacks": 2
+    },
+    "B": {
+      "trials": 3,
+      "success": 3,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 72.43,
+      "mean_llm_calls": 12.0,
+      "mean_tool_calls": 27.0,
+      "mean_tokens": 93154.67,
+      "total_cost_usd": 0.043759,
+      "mean_cost_usd": 0.014586,
+      "cost_per_success_usd": 0.014586,
+      "models": [
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "fallbacks": 0
+    },
+    "R": {
+      "trials": 3,
+      "success": 3,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 32.2,
+      "mean_llm_calls": 1.0,
+      "mean_tool_calls": 15.0,
+      "mean_tokens": 37391.33,
+      "total_cost_usd": 0.017138,
+      "mean_cost_usd": 0.005713,
+      "cost_per_success_usd": 0.005713,
+      "models": [
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "fallbacks": 0
+    }
+  },
+  "trials": [
+    {
+      "variant": "A",
+      "trial": 1,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 134.7,
+      "approved_at_sec": 128.7,
+      "llm_calls": 6,
+      "input_tokens": 7712,
+      "output_tokens": 4846,
+      "cost_usd": 0.0581,
+      "cost_unpriced_calls": 1,
+      "tool_calls": 14,
+      "models": [
+        "gpt-5-2025-08-07"
+      ],
+      "fallbacks": 1,
+      "residual_issues": 1,
+      "incident_id": "inc-e724d050"
+    },
+    {
+      "variant": "A",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 136.7,
+      "approved_at_sec": 130.7,
+      "llm_calls": 6,
+      "input_tokens": 7712,
+      "output_tokens": 5728,
+      "cost_usd": 0.06692,
+      "cost_unpriced_calls": 1,
+      "tool_calls": 14,
+      "models": [
+        "gpt-5-2025-08-07"
+      ],
+      "fallbacks": 1,
+      "residual_issues": 1,
+      "incident_id": "inc-1dd96bbb"
+    },
+    {
+      "variant": "A",
+      "trial": 3,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 102.6,
+      "approved_at_sec": 96.6,
+      "llm_calls": 4,
+      "input_tokens": 5918,
+      "output_tokens": 4672,
+      "cost_usd": 0.054117,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 12,
+      "models": [
+        "gpt-5-2025-08-07"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-830cc292"
+    },
+    {
+      "variant": "B",
+      "trial": 1,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 74.5,
+      "approved_at_sec": 68.4,
+      "llm_calls": 12,
+      "input_tokens": 91621,
+      "output_tokens": 1331,
+      "cost_usd": 0.014542,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 27,
+      "models": [
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-bd75db40"
+    },
+    {
+      "variant": "B",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 68.4,
+      "approved_at_sec": 62.4,
+      "llm_calls": 12,
+      "input_tokens": 92086,
+      "output_tokens": 1402,
+      "cost_usd": 0.014654,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 27,
+      "models": [
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-6260f0fd"
+    },
+    {
+      "variant": "B",
+      "trial": 3,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 74.4,
+      "approved_at_sec": 68.4,
+      "llm_calls": 12,
+      "input_tokens": 91670,
+      "output_tokens": 1354,
+      "cost_usd": 0.014563,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 27,
+      "models": [
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-6668417d"
+    },
+    {
+      "variant": "R",
+      "trial": 1,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 32.2,
+      "approved_at_sec": 26.1,
+      "llm_calls": 1,
+      "input_tokens": 37160,
+      "output_tokens": 234,
+      "cost_usd": 0.005714,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 15,
+      "models": [
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-a6be11d0"
+    },
+    {
+      "variant": "R",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 32.2,
+      "approved_at_sec": 26.1,
+      "llm_calls": 1,
+      "input_tokens": 37160,
+      "output_tokens": 230,
+      "cost_usd": 0.005712,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 15,
+      "models": [
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-30a9c6cc"
+    },
+    {
+      "variant": "R",
+      "trial": 3,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "needs_human": false,
+      "elapsed_sec": 32.2,
+      "approved_at_sec": 26.1,
+      "llm_calls": 1,
+      "input_tokens": 37160,
+      "output_tokens": 230,
+      "cost_usd": 0.005712,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 15,
+      "models": [
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-9f1e356e"
+    }
+  ]
+}

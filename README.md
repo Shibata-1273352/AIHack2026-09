@@ -5,7 +5,11 @@ AIエージェントが**実通信を伴う擬似ネットワーク**を調査�
 （主回線リンク断 + 予備経路のACL誤設定）を特定。検証環境で修正を事前検証し、
 **人間の承認**を経て適用、独立検証器で業務復旧を確認するまでを実演する。
 
-要件定義書: [docs/requirements/NetWalker.md](docs/requirements/NetWalker.md)
+- **アーキテクチャ**: [docs/architecture.md](docs/architecture.md)（構成図・信頼境界・データフロー）
+- **審査5項目アピール**: [docs/judging.md](docs/judging.md)（実装証拠・実測値の索引）
+- **A/B/R 比較実測**: [docs/evaluation/results.md](docs/evaluation/results.md)
+- **攻撃耐性の検証記録**: [docs/evidence/T-11.md](docs/evidence/T-11.md)
+- **要件定義書**: [docs/requirements/NetWalker.md](docs/requirements/NetWalker.md)
 
 ## 構成
 
@@ -83,29 +87,70 @@ cp backend/.env.example backend/.env
 リハーサル自動確認: `cd frontend && node scripts/rehearsal.mjs`
 （FHD/4K 両解像度で全フェーズを撮影し、横方向のはみ出しを検証。小さい画面では縦スクロール可。要 `npm install`）
 
-リセットの回帰テスト: `cd backend && uv run python -m unittest test_demo_reset -v`
+回帰テスト一式: `cd backend && uv run python -m unittest test_demo_reset test_topology_documents test_send_gate test_approval -v`（22件）
 
-## 検証済みシナリオ
+## シナリオ別の確認状況
 
-| 条件 | 結果 |
-|---|---|
-| 障害なし (T-01) | 業務正常を確認し、変更を提案しない |
-| A単独 (T-02) | 冗長化制御で業務継続。主回線断を残存課題として報告 |
-| B単独 (T-03) | 主回線利用中は業務正常（潜在障害） |
-| A+B複合 (T-04) | 二要因を証拠付きで特定→検証→承認→適用→復旧 |
-| 承認なし/ハッシュ不一致/期限切れ (T-06/T-07) | 適用拒否（403） |
-| POLICY-* 削除・r2以外への変更 | サーバが拒否（M-18） |
-| 冪等キー再送 | 二重適用なし（同一実行を再生） |
-| LLM障害/キー未設定 (T-10) | scripted へ自動フォールバック、モード表示 |
+「証跡」列は根拠の種類を示す。**自動テスト**＝リポジトリ内のテストで機械的に再現できるもの。
+**実測ログ**＝実行結果を文書として残したもの。**手動確認**＝デモ操作で確認したが自動化していないもの。
 
-## 機微情報の扱い（N-01）
+| 条件 | 結果 | 証跡 |
+|---|---|---|
+| A+B複合 (T-04) | 二要因を証拠付きで特定→検証→承認→適用→復旧 | 実測ログ: [results.md](docs/evaluation/results.md)（3方式×3試行） |
+| 承認なし/ハッシュ不一致/期限切れ/二重承認 (T-06/T-07) | 適用拒否 | 自動テスト: `backend/test_approval.py`（9件） |
+| POLICY-* 削除・r2以外への変更 | サーバが拒否（M-18） | 実測ログ: [T-11.md](docs/evidence/T-11.md#攻撃2-api-直叩きによる禁止ルールの削除承認llmを迂回) |
+| 構成図PDFへの命令埋め込み (T-11) | 命令を無視し図の内容のみ抽出 | 実測ログ: [T-11.md](docs/evidence/T-11.md) |
+| 変更系APIの無認証実行 (M-09/N-02) | 403 | 実測ログ: [T-11.md](docs/evidence/T-11.md#攻撃3-変更系apiの無認証実行m-09n-02) |
+| 外部送信不可データのLLM送信 (T-13/T-19) | プロバイダ呼出前に遮断 | 自動テスト: `backend/test_send_gate.py`（4件） |
+| 構成図PDFの不正入力（暗号化・ページ超過・スキーマ不一致） | 解析失敗を明示し調査開始を拒否 | 自動テスト: `backend/test_topology_documents.py`（5件） |
+| 処理中のリセット・注入・旧案件への承認 | 409 で拒否・履歴は保持 | 自動テスト: `backend/test_demo_reset.py`（4件） |
+| 障害なし (T-01) | 業務正常を確認し、変更を提案しない | 手動確認 |
+| A単独 (T-02) | 冗長化制御で業務継続。主回線断を残存課題として報告 | 手動確認 |
+| B単独 (T-03) | 主回線利用中は業務正常（潜在障害） | 手動確認 |
+| 冪等キー再送 | 二重適用なし（同一実行を再生） | 手動確認 |
+| LLM障害/キー未設定 (T-10) | golden 再生へフォールバックし、その事実を表示 | 手動確認 |
+
+## セキュリティ
+
+- **変更系APIの認証（M-09/N-02）**: `APPROVAL_TOKEN` を設定すると、承認・障害注入・
+  リセットに `X-Netwalker-Token` ヘッダが必須になる（定数時間比較・不一致は403）。
+  `demo.sh` が起動ごとにトークンを生成し、案内URLの `?token=` に埋め込む。
+  未設定時は開発モードとして認証なしで動く
+- **変更操作のホワイトリスト（M-18）**: `sim/ctl.py` の `check_plan` を必ず通る。
+  LLM が生成した任意コマンドは実行しない。`POLICY-*` ルールの削除は常に拒否
+- **外部送信ゲート（T-13/T-19）**: `data_class` が `external_allowed` 以外のデータは
+  プロバイダ呼出**前**に遮断し、違反を `model_run` に監査記録する
+- **プロンプトインジェクション対策**: 図中・抽出テキストの命令はデータとして扱う旨を
+  システムプロンプトで指示し、出力を JSON Schema に固定した上で、
+  **登録機器表との機械照合**を最終ゲートにする（モデルの善良さに依存しない）
+- 攻撃の実測記録: [docs/evidence/T-11.md](docs/evidence/T-11.md)
+
+### 機微情報の扱い（N-01）
 
 - API キーは `backend/.env`（gitignore 対象）のみ。コード・ログ・画面・推論入力に出さない
 - 自己署名証明書はコンテナ内で生成、リポジトリに含まない
 - デモデータはすべて合成（実在の顧客情報なし）
 
+## 費用の考え方
+
+- 費用は OrcaRouter が原価を返さないため、`route_policy.yaml` の単価表 × 実トークン数で算出する。
+  単価不明のモデルは加算せず、0 と偽らない
+- 上限は2本立て。**案件あたり 0.50 USD**（`per_incident_usd`）と、
+  **構成図PDF 1件あたり 0.20 USD**（`per_document_usd`）。PDF解析は案件成立前に発生するため別枠
+- 上限に達する前に新規呼出を止める（`BudgetExceeded`）。超過してから気づく作りにしない
+- 方式別の実測費用は [docs/evaluation/results.md](docs/evaluation/results.md)
+
 ## 制約・既知の限界
 
+誠実な開示のため、**実装していないもの・自動検証していないもの**を明記する。
+
+- **T-21（再起動後の状態照合）は未実装**。プロセス再起動時に進行中案件を
+  外部状態と突き合わせる処理は入れていない（DBの案件は残るが、sim側の実状態との
+  再同期は手動リセット前提）
+- **CI は未導入**。テストはローカル実行（`python -m unittest`）のみ
+- `check_plan`（sim側ホワイトリスト）の単体テストは未整備。実測ログ（T-11.md）で代替
+- `plan_hash` は計画本体のみのハッシュで、`incident_id` を含まない。
+  案件跨ぎの取り違えは別途 `plan_id` 照合で防いでいる
 - OTel は簡易実装（SQLite スパン + 独自タイムライン表示）。Collector 連携は未実装
 - DGX Spark ローカルLLM（M-16）は未接続。VLM/判断は OrcaRouter または scripted
 - 実機・マルチベンダー機器（W-04）は対象外。netns + nftables による Linux 等価環境

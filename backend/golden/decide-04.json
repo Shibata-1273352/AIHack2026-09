@@ -1,0 +1,22 @@
+{
+  "text": "{\"action\":\"probe_path\",\"aspects\":[],\"dst\":\"10.0.100.10\",\"hypothesis_update\":\"gwからsrvへの経路に問題がある可能性があるため、r2経由での接続を確認する必要がある。\",\"kind\":\"https\",\"node\":\"gw\",\"port\":443,\"reason\":\"r2経由での接続確認が必要。\",\"rule_comment\":\"\",\"src\":\"client\"}",
+  "parsed": {
+    "action": "probe_path",
+    "aspects": [],
+    "dst": "10.0.100.10",
+    "hypothesis_update": "gwからsrvへの経路に問題がある可能性があるため、r2経由での接続を確認する必要がある。",
+    "kind": "https",
+    "node": "gw",
+    "port": 443,
+    "reason": "r2経由での接続確認が必要。",
+    "rule_comment": "",
+    "src": "client"
+  },
+  "route": "openai/gpt-4o-mini",
+  "resolved_model": "gpt-4o-mini-2024-07-18",
+  "input_tokens": 1767,
+  "output_tokens": 90,
+  "cost_usd": 0.00031905000000000003,
+  "latency_ms": 1409,
+  "schema_ok": true
+}

@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     # auto: キーがあれば llm、なければ scripted
     nw_agent_mode: Literal["auto", "scripted", "llm"] = "auto"
 
+    # 比較評価の方式（M-17/M-19）: a=高性能固定 / b=段階別選択（既定）。
+    # R方式（固定ランブック）は nw_agent_mode=scripted で表す。
+    nw_route_variant: Literal["a", "b"] = "b"
+
     # 変更系API（承認・障害注入・リセット）の共有トークン（M-09/N-02）。
     # 未設定時は開発モード＝認証なし。demo.sh が起動時に生成して設定する。
     approval_token: SecretStr | None = None

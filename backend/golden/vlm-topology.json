@@ -1,0 +1,70 @@
+{
+  "text": "{\"links\":[{\"a\":\"業務端末\",\"b\":\"拠点GW\",\"dashed\":false,\"label\":\"LAN\"},{\"a\":\"拠点GW\",\"b\":\"経路ノード r1\",\"dashed\":false,\"label\":\"主回線\"},{\"a\":\"経路ノード r1\",\"b\":\"経路ノード r2\",\"dashed\":true,\"label\":\"予備回線\"},{\"a\":\"経路ノード r1\",\"b\":\"受注サービス\",\"dashed\":false,\"label\":\"主回線\"}],\"nodes\":[{\"annotation\":\"10.0.1.1\",\"label\":\"拠点GW\",\"role\":\"gateway\",\"zone\":\"LAN\"},{\"annotation\":\"10.0.1.10\",\"label\":\"業務端末\",\"role\":\"endpoint\",\"zone\":\"LAN\"},{\"annotation\":\"10.0.100.10\",\"label\":\"受注サービス\",\"role\":\"server\",\"zone\":\"データセンター\"},{\"annotation\":\"unknown\",\"label\":\"経路ノード r1\",\"role\":\"router\",\"zone\":\"WAN\"},{\"annotation\":\"unknown\",\"label\":\"経路ノード r2\",\"role\":\"router\",\"zone\":\"WAN\"}]}",
+  "parsed": {
+    "links": [
+      {
+        "a": "業務端末",
+        "b": "拠点GW",
+        "dashed": false,
+        "label": "LAN"
+      },
+      {
+        "a": "拠点GW",
+        "b": "経路ノード r1",
+        "dashed": false,
+        "label": "主回線"
+      },
+      {
+        "a": "経路ノード r1",
+        "b": "経路ノード r2",
+        "dashed": true,
+        "label": "予備回線"
+      },
+      {
+        "a": "経路ノード r1",
+        "b": "受注サービス",
+        "dashed": false,
+        "label": "主回線"
+      }
+    ],
+    "nodes": [
+      {
+        "annotation": "10.0.1.1",
+        "label": "拠点GW",
+        "role": "gateway",
+        "zone": "LAN"
+      },
+      {
+        "annotation": "10.0.1.10",
+        "label": "業務端末",
+        "role": "endpoint",
+        "zone": "LAN"
+      },
+      {
+        "annotation": "10.0.100.10",
+        "label": "受注サービス",
+        "role": "server",
+        "zone": "データセンター"
+      },
+      {
+        "annotation": "unknown",
+        "label": "経路ノード r1",
+        "role": "router",
+        "zone": "WAN"
+      },
+      {
+        "annotation": "unknown",
+        "label": "経路ノード r2",
+        "role": "router",
+        "zone": "WAN"
+      }
+    ]
+  },
+  "route": "openai/gpt-4o-mini",
+  "resolved_model": "gpt-4o-mini-2024-07-18",
+  "input_tokens": 37160,
+  "output_tokens": 234,
+  "cost_usd": 0.0057144,
+  "latency_ms": 3054,
+  "schema_ok": true
+}

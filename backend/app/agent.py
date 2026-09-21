@@ -379,6 +379,11 @@ def _investigate_llm(incident_id: str, tools: ToolBelt) -> None:
                         "comparison":topo["comparison"]}, ensure_ascii=False)})
 
     proposed: dict[str, Any] | None = None
+    # 仮説は本文で同定し、同じ内容を繰り返し提示されても1件として扱う。
+    # 各ステップで得た証拠をその仮説へ紐付け、決着したら状態を更新する。
+    seen_hypotheses: dict[str, dict[str, Any]] = {}
+    current_h: dict[str, Any] | None = None
+
     for step_no in range(1, 11):  # 判断10ステップ上限（N-04）
         user = _render_history(history)
         resp = gateway.call(incident_id, f"decide-{step_no:02d}", "decide",
@@ -391,9 +396,14 @@ def _investigate_llm(incident_id: str, tools: ToolBelt) -> None:
         publish_step(incident_id,
                      f"AI判断{step_no}: {d['action']}",
                      d.get("reason", ""))
-        if d.get("hypothesis_update"):
-            add_hypothesis(incident_id, d["hypothesis_update"], "open", [], "")
+        statement = (d.get("hypothesis_update") or "").strip()
+        if statement:
+            current_h = seen_hypotheses.get(statement)
+            if current_h is None:
+                current_h = add_hypothesis(incident_id, statement, "open", [], "")
+                seen_hypotheses[statement] = current_h
 
+        res: dict[str, Any] | None = None
         if d["action"] == "observe_node":
             node = d["node"] or "gw"
             aspects = d["aspects"] or ["link", "route"]
@@ -421,6 +431,10 @@ def _investigate_llm(incident_id: str, tools: ToolBelt) -> None:
             history.append({"tool": "test_forbidden",
                             "summary": res["evidence"]["summary"]})
         elif d["action"] == "propose_fix":
+            # 修正案に到達した＝直近の仮説が証拠で支持された
+            if current_h is not None:
+                update_hypothesis(incident_id, current_h, "supported", [],
+                                  f"修正案の事前検証で確認（{d.get('rule_comment', '')}）")
             proposed = d
             break
         elif d["action"] == "conclude_no_change":
@@ -441,6 +455,11 @@ def _investigate_llm(incident_id: str, tools: ToolBelt) -> None:
                 return
             history.append({"tool": "conclude_no_change(却下)",
                             "summary": "業務テストは不合格のまま。調査を継続してください"})
+
+        # 観測で得た証拠を、いま検証中の仮説へ紐付ける（根拠の追跡可能性）
+        if current_h is not None and res is not None:
+            update_hypothesis(incident_id, current_h, current_h["status"],
+                              [res["evidence"]["id"]])
 
     if proposed is None:
         raise RuntimeError("判断ステップ上限までに修正案へ到達しませんでした")

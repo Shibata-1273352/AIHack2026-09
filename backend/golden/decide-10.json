@@ -1,0 +1,29 @@
+{
+  "text": "{\"action\":\"observe_node\",\"aspects\":[\"link\",\"route\",\"addr\",\"nft\",\"listen\",\"failover\"],\"dst\":\"\",\"hypothesis_update\":\"\",\"kind\":\"\",\"node\":\"r2\",\"port\":0,\"reason\":\"r2の状態を確認することで、経路の問題を特定するための情報を得るため。\",\"rule_comment\":\"\",\"src\":\"\"}",
+  "parsed": {
+    "action": "observe_node",
+    "aspects": [
+      "link",
+      "route",
+      "addr",
+      "nft",
+      "listen",
+      "failover"
+    ],
+    "dst": "",
+    "hypothesis_update": "",
+    "kind": "",
+    "node": "r2",
+    "port": 0,
+    "reason": "r2の状態を確認することで、経路の問題を特定するための情報を得るため。",
+    "rule_comment": "",
+    "src": ""
+  },
+  "route": "openai/gpt-4o-mini",
+  "resolved_model": "gpt-4o-mini-2024-07-18",
+  "input_tokens": 1911,
+  "output_tokens": 78,
+  "cost_usd": 0.00033345,
+  "latency_ms": 1339,
+  "schema_ok": true
+}

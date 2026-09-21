@@ -83,7 +83,8 @@ class ModelGateway:
     def call(self, incident_id: str, key: str, profile_name: str, *,
              system: str, user: str | list[dict[str, Any]],
              json_schema: dict[str, Any] | None = None,
-             data_class: str = "external_allowed") -> ModelResponse:
+             data_class: str = "external_allowed",
+             budget_usd: float | None = None) -> ModelResponse:
         # 送信ゲート（T-13/T-19）: external_allowed 以外はモード・キー有無に関わらず
         # プロバイダ呼出前に遮断し、違反を model_run として監査記録する。
         if data_class != "external_allowed":
@@ -95,13 +96,14 @@ class ModelGateway:
 
         profile = policy.resolve(profile_name)
 
-        # 費用上限: 直前の利用額 + 次呼出の予約額（上限額で保守的に見積る）
+        # 費用上限: 直前の利用額 + 次呼出の予約額（上限額で保守的に見積る）。
+        # 構成図PDF は案件成立前に発生するため per_document_usd の別枠で管理する
+        # （budget_usd 未指定時は案件予算）。
+        limit = budget_usd if budget_usd is not None else policy.budget_per_incident_usd
         if self.mode in ("live", "record") and settings.has_api_key:
-            if self.spent_usd(incident_id) + profile.max_cost_usd \
-                    > policy.budget_per_incident_usd:
+            if self.spent_usd(incident_id) + profile.max_cost_usd > limit:
                 raise BudgetExceeded(
-                    f"案件の費用上限 {policy.budget_per_incident_usd} USD に到達するため"
-                    "新規呼出を停止しました")
+                    f"費用上限 {limit} USD に到達するため新規呼出を停止しました")
 
         if self.mode == "mock":
             response = self.load_recorded(key) or self._empty_mock(key, profile)

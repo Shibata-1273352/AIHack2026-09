@@ -42,6 +42,26 @@ profiles:
       - openai/gpt-4o-mini
       - google/gemini-2.5-flash
 
+# ---------------------------------------------------------------- 比較評価（M-17/M-19, §13.1）
+# NW_ROUTE_VARIANT で方式を切り替え、コストパフォーマンスを実測比較する。
+#   a … 高性能モデル固定（全工程を最上位モデルで実行）
+#   b … 段階別選択（既定。安価モデルから始め、必要時のみ上位へ）
+#   r … 固定ランブック（LLM不使用。NW_AGENT_MODE=scripted で実行）
+# 各方式の実測結果は docs/evaluation/results.md を参照。
+variants:
+  a:
+    description: 高性能モデル固定（比較基準・品質重視）
+    profiles:
+      decide:
+        routes: [openai/gpt-5]
+      vlm:
+        routes: [openai/gpt-5]
+      summarize:
+        routes: [openai/gpt-5]
+  b:
+    description: 段階別選択（既定。上の profiles をそのまま使う）
+    profiles: {}
+
 # モデル単価（USD / 100万トークン）。OrcaRouter は原価を返さないため
 # トークン数×単価で算出する。単価不明のモデルは null のまま（0 と偽らない）。
 # 出所: OrcaRouter GET /v1/models の pricing（tsumugi 2026-08-13 取得）。
@@ -56,6 +76,9 @@ pricing:
     prompt_per_million: 1.25
     completion_per_million: 10.00
 
-# 案件あたりの費用上限（N-04: 超過前に新規呼出を止める）
+# 費用上限（N-04: 超過前に新規呼出を止める）
+#   per_incident_usd … 案件あたり（調査〜復旧の判断呼出）
+#   per_document_usd … 構成図PDF 1件あたり（案件成立前に発生するため別枠で管理）
 budget:
   per_incident_usd: 0.50
+  per_document_usd: 0.20
