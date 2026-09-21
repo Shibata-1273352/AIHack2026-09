@@ -383,9 +383,10 @@ export function Topology({ incident, note, pulse, evidence, style }: {
           );
         })}
 
-        {/* 業務不通（sim_pulse 実測でパケットが届いていない） */}
+        {/* 業務不通（sim_pulse 実測でパケットが届いていない）。
+            srv ノードの副題（y=260+62=322）と重ならない位置に置く */}
         {pulse && !pulse.business_ok && (
-          <g transform="translate(760,330)" className="fadein">
+          <g transform="translate(760,368)" className="fadein">
             <rect x="-46" y="-12" width="92" height="24" rx="12" fill={C.red} filter="url(#nwsh)" />
             <text y="4" textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff">業務不通</text>
           </g>
