@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import time
+from jsonschema import validate, ValidationError
 from dataclasses import dataclass, field
 from typing import Any, Final
 
@@ -114,7 +115,8 @@ class OrcaRouterClient:
             if profile.uses_json_schema and json_schema is not None:
                 try:
                     parsed = json.loads(text)
-                except json.JSONDecodeError:
+                    validate(parsed, json_schema)
+                except (json.JSONDecodeError, ValidationError):
                     schema_ok = False
             usage = getattr(completion, "usage", None)
             return ModelResponse(

@@ -385,7 +385,7 @@ export function Topology({ incident, note, pulse, evidence, style }: {
         <span>実測確認 {probedCount} / 5</span>
         <span>図と実態の差：{diffCount > 0 ? `${diffCount}件` : "0"}</span>
         <span style={{ marginLeft: "auto" }}>
-          業務経路（実測）: client → gw → {activePath} → srv{pulse ? (pulse.business_ok ? " · 疎通" : " · 不通") : ""}
+          {pulse ? `現在の業務経路: client → gw → ${activePath} → srv · ${pulse.business_ok ? "疎通" : "不通"}` : "現在の業務経路：測定待ち"}
         </span>
       </div>
     </section>

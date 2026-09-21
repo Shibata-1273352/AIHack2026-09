@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import SecretStr, Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # backend/
@@ -13,13 +13,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # backend/
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env", env_file_encoding="utf-8", extra="ignore")
+        env_file=(BASE_DIR.parent / ".env", BASE_DIR / ".env"), env_file_encoding="utf-8", extra="ignore",
+        populate_by_name=True)
 
     # シミュレータ制御API
     sim_url: str = "http://127.0.0.1:9000"
 
     # OrcaRouter（キー未設定でも scripted/mock で動作する）
-    orcarouter_api_key: SecretStr | None = None
+    orcarouter_api_key: SecretStr | None = Field(default=None,
+        validation_alias=AliasChoices("ORCAROUTER_API_KEY", "ORCA_API_KEY"))
     orcarouter_base_url: str = "https://api.orcarouter.ai/v1"
 
     # mock | record | live（record: 実応答を golden 保存 / live: 失敗時 golden 再生）

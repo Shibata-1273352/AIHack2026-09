@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from . import agent, approval, db, events, incident, scenario
+from . import agent, approval, db, events, incident, scenario, runtime, topology_documents
 from .config import settings
 
 app = FastAPI(title="netwalker-backend")
@@ -51,6 +51,7 @@ async def _startup() -> None:
 # ================================================================ 案件
 
 class CreateIncidentReq(BaseModel):
+    topology_document_id: str | None = None
     symptom: str = "受注画面が開かない。機器は動いているように見える"
     site: str = "拠点A"
     business: str = "受注業務（order.example.com）"
@@ -59,10 +60,22 @@ class CreateIncidentReq(BaseModel):
 
 @app.post("/api/incidents")
 def create_incident(req: CreateIncidentReq) -> dict[str, Any]:
-    inc = incident.create(req.symptom, req.site, req.business, req.reporter,
-                          mode=settings.agent_mode)
-    agent.start_investigation(inc["id"])
-    return inc
+    with runtime.lock:
+        if runtime.workers or db.latest_incident():
+            raise HTTPException(409, "次のデモを開始する前にリセットしてください")
+        if req.topology_document_id:
+            try:
+                doc = topology_documents.get_document(req.topology_document_id)
+            except KeyError:
+                raise HTTPException(404, "構成図が見つかりません")
+            if doc["status"] != "ready" or not doc["result"]["comparison"]["ok"]:
+                raise HTTPException(422, "構成図の解析と登録構成との一致確認が必要です")
+        inc = incident.create(req.symptom, req.site, req.business, req.reporter,
+                              mode=settings.agent_mode)
+        if req.topology_document_id:
+            inc = incident.set_fields(inc["id"], topology_document_id=req.topology_document_id)
+        agent.start_investigation(inc["id"])
+        return inc
 
 
 def _bundle(inc: dict[str, Any]) -> dict[str, Any]:
@@ -107,6 +120,14 @@ class ApprovalReq(BaseModel):
 
 @app.post("/api/incidents/{incident_id}/approval")
 def decide_approval(incident_id: str, req: ApprovalReq) -> dict[str, Any]:
+    with runtime.lock:
+        current = db.latest_incident()
+        if not current or current["id"] != incident_id or runtime.workers:
+            raise HTTPException(409, "この案件は終了済み、または処理中です。最新の画面を確認してください")
+        return _decide_approval(incident_id, req)
+
+
+def _decide_approval(incident_id: str, req: ApprovalReq) -> dict[str, Any]:
     try:
         ap = approval.decide(incident_id, req.plan_id, req.plan_hash,
                              req.decision, req.approver)
@@ -124,6 +145,13 @@ class BusinessCheckReq(BaseModel):
 
 @app.post("/api/business_check")
 def business_check() -> dict[str, Any]:
+    with runtime.lock:
+        if runtime.workers:
+            raise HTTPException(409, "調査・復旧処理の完了を待ってください")
+        return _business_check()
+
+
+def _business_check() -> dict[str, Any]:
     """iPad の業務確認（再読込）。拠点側検証クライアント経由の実測（§7.3）。"""
     inc = db.latest_incident()
     if inc is None:
@@ -175,16 +203,23 @@ class InjectReq(BaseModel):
 def demo_inject(req: InjectReq) -> dict[str, Any]:
     if req.fault not in ("a", "b", "both"):
         raise HTTPException(422, "fault must be a|b|both")
-    out = scenario.inject(req.fault)
-    events.publish("demo", {"injected": req.fault})
-    return out
+    with runtime.lock:
+        if runtime.workers or db.latest_incident():
+            raise HTTPException(409, "障害を再現する前にデモをリセットしてください")
+        out = scenario.inject(req.fault)
+        events.publish("demo", {"injected": req.fault})
+        return out
 
 
 @app.post("/api/demo/reset")
 def demo_reset() -> dict[str, Any]:
-    out = scenario.reset()
-    events.publish("demo", {"reset": True})
-    return out
+    with runtime.lock:
+        if runtime.workers:
+            raise HTTPException(409, "調査・適用処理中です。処理完了または承認待ちになってからリセットしてください")
+        out = scenario.reset()
+        db.archive_demo()
+        events.publish("demo", {"reset": True})
+        return out
 
 
 @app.get("/api/demo/ground_truth")
@@ -209,6 +244,51 @@ def topology_png() -> FileResponse:
     if not p.exists():
         raise HTTPException(404, "構成図がまだ生成されていません")
     return FileResponse(p)
+
+
+@app.get("/api/assets/demo-topology.pdf")
+def demo_pdf() -> FileResponse:
+    return FileResponse(settings.assets_dir / "netwalker-demo-topology.pdf",
+                        media_type="application/pdf", filename="netwalker-demo-topology.pdf")
+
+
+@app.post("/api/topology-documents", status_code=202)
+async def upload_topology(request: Request, filename: str = "diagram.pdf") -> dict:
+    content = bytearray()
+    async for chunk in request.stream():
+        content.extend(chunk)
+        if len(content) > topology_documents.MAX_BYTES:
+            raise HTTPException(413, "PDFは10MB以下にしてください")
+    with runtime.lock:
+        if runtime.workers or db.latest_incident():
+            raise HTTPException(409, "案件開始前にアップロードしてください。解析・調査中は完了を待ってください")
+        try:
+            doc = topology_documents.create_document(bytes(content), filename)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        runtime.workers.add(doc["id"])
+        threading.Thread(target=runtime.run_worker,
+            args=(doc["id"], topology_documents.analyze_document, doc["id"]), daemon=True).start()
+        return doc
+
+
+@app.get("/api/topology-documents/{doc_id}")
+def topology_document(doc_id: str) -> dict:
+    try:
+        return topology_documents.get_document(doc_id)
+    except KeyError:
+        raise HTTPException(404, "構成図が見つかりません")
+
+
+@app.get("/api/topology-documents/{doc_id}/preview")
+def topology_preview(doc_id: str) -> FileResponse:
+    try:
+        path = topology_documents.document_dir(doc_id) / "page-1.png"
+        if not path.exists():
+            raise KeyError(doc_id)
+        return FileResponse(path, media_type="image/png")
+    except KeyError:
+        raise HTTPException(404, "プレビューを準備中です")
 
 
 # ================================================================ 静的配信（SPA）

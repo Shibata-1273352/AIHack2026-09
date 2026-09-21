@@ -58,7 +58,10 @@ def update_hypothesis(incident_id: str, h: dict[str, Any], status: str,
 
 def start_investigation(incident_id: str) -> None:
     """案件受付後の調査開始（別スレッドで実行）。"""
-    t = threading.Thread(target=_run_investigation, args=(incident_id,), daemon=True)
+    from . import runtime
+    runtime.workers.add(incident_id)
+    t = threading.Thread(target=runtime.run_worker,
+                         args=(incident_id, _run_investigation, incident_id), daemon=True)
     t.start()
 
 
@@ -371,7 +374,9 @@ def _investigate_llm(incident_id: str, tools: ToolBelt) -> None:
     publish_step(incident_id, "構成図をVLMで構造化し登録機器表と照合")
     topo = vlm.read_topology(incident_id)
     history.append({"tool": "vlm_read_topology",
-                    "summary": f"構成図照合: {'一致' if topo['comparison']['ok'] else '不一致あり'}"})
+                    "summary": json.dumps({"source":topo["source"],
+                        "nodes":topo["mapped_nodes"], "links":topo["mapped_links"],
+                        "comparison":topo["comparison"]}, ensure_ascii=False)})
 
     proposed: dict[str, Any] | None = None
     for step_no in range(1, 11):  # 判断10ステップ上限（N-04）
@@ -516,7 +521,9 @@ def on_approval_decided(incident_id: str, ap: dict[str, Any]) -> None:
             incident_id, "NEEDS_HUMAN",
             f"承認者({ap['approver']})が却下しました。計画の見直しが必要です")
         return
-    t = threading.Thread(target=_apply_and_verify, args=(incident_id, ap),
+    from . import runtime
+    runtime.workers.add(incident_id)
+    t = threading.Thread(target=runtime.run_worker, args=(incident_id, _apply_and_verify, incident_id, ap),
                          daemon=True)
     t.start()
 

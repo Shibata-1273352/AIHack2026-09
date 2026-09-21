@@ -2,7 +2,7 @@
 // 承認UI本体は components/Approval.tsx を共有（コンソール内 ApprovalStage と同一実装）。
 // 対象・計画版・ハッシュ・期限をサーバで照合し、古い画面からの承認は拒否される（M-14）。
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useBundle, post } from "./api";
 import { ApprovalScreen } from "./components/Approval";
 
@@ -12,6 +12,7 @@ export default function ApprovePage() {
   const [bizBusy, setBizBusy] = useState(false);
 
   const inc = bundle.incident;
+  useEffect(() => { setBizResult(null); }, [inc?.id]);
 
   const checkBusiness = async () => {
     setBizBusy(true);
@@ -66,5 +67,5 @@ export default function ApprovePage() {
     </>
   );
 
-  return <ApprovalScreen bundle={bundle} footer={footer} />;
+  return <ApprovalScreen key={inc?.id ?? "empty"} bundle={bundle} footer={footer} />;
 }

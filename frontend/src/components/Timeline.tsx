@@ -19,7 +19,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 function KpiChips({ bundle }: { bundle: Bundle }) {
-  const runs = bundle.model_runs;
+  const runs = bundle.model_runs.filter(r => r.resolved_model && !["mock", "fallback_to_mock"].includes(r.outcome));
   const tokens = runs.reduce((a, r) => a + (r.input_tokens ?? 0) + (r.output_tokens ?? 0), 0);
   const cost = runs.reduce((a, r) => a + (r.cost_usd ?? 0), 0);
   const elapsed = useElapsed(bundle.incident);
@@ -45,7 +45,9 @@ function KpiChips({ bundle }: { bundle: Bundle }) {
 }
 
 export function TimelineCard({ bundle, style }: { bundle: Bundle; style?: React.CSSProperties }) {
-  const spans = bundle.spans;
+  const end = bundle.incident?.status_history.find(h => ["SERVICE_RESTORED", "RESOLVED", "NEEDS_HUMAN", "CANCELLED"].includes(h.status));
+  const endMs = end ? new Date(end.at).getTime() + 999 : Infinity;
+  const spans = bundle.spans.filter(s => s.start_ms <= endMs);
   const empty = !bundle.incident || spans.length === 0;
   const t0 = empty ? 0 : Math.min(...spans.map((s) => s.start_ms));
   const t1 = empty ? 1000 : Math.max(...spans.map((s) => s.end_ms), t0 + 1000);

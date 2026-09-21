@@ -20,6 +20,7 @@ export function useClock(): string {
 export function useApproval(bundle: Bundle) {
   const [approver, setApprover] = useState("田中（変更承認権限）");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [, tick] = useState(0);
   // 残り時間カウントダウン用の再描画（StrictMode でも cleanup で二重タイマーを防ぐ）
   useEffect(() => {
@@ -36,7 +37,8 @@ export function useApproval(bundle: Bundle) {
   const remainStr = `${Math.floor(remain / 60)}:${String(remain % 60).padStart(2, "0")}`;
 
   const decide = async (decision: "approve" | "reject") => {
-    if (!inc || !ap || !plan) return;
+    if (!inc || !ap || !plan || busy || remain <= 0) return;
+    setBusy(true);
     setError("");
     try {
       await post(`/api/incidents/${inc.id}/approval`, {
@@ -44,10 +46,12 @@ export function useApproval(bundle: Bundle) {
       });
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setBusy(false);
     }
   };
 
-  return { inc, ap, plan, remain, remainStr, error, decide, approver, setApprover };
+  return { inc, ap, plan, remain, remainStr, error, decide, approver, setApprover, busy };
 }
 
 // ---------------------------------------------------------------- 承認画面（共有）
@@ -56,7 +60,7 @@ export function ApprovalScreen({ bundle, compact, footer }: {
   bundle: Bundle; compact?: boolean; footer?: ReactNode;
 }) {
   const clock = useClock();
-  const { inc, ap, plan, remainStr, error, decide, approver, setApprover } = useApproval(bundle);
+  const { inc, ap, plan, remain, remainStr, error, decide, approver, setApprover, busy } = useApproval(bundle);
 
   const card: React.CSSProperties = {
     background: "#fff", borderRadius: compact ? 10 : 12, padding: compact ? "9px 11px" : "12px 14px",
@@ -88,7 +92,7 @@ export function ApprovalScreen({ bundle, compact, footer }: {
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", padding: `${compact ? 8 : 10}px ${pad}px 0`, fontSize: compact ? 10 : 11, color: "#5d6773", fontWeight: 600 }}>
         <span>{clock}</span>
-        <span>iPad · 承認端末</span>
+        <span>人による変更承認</span>
       </div>
 
       <div style={{ padding: `${compact ? 10 : 16}px ${pad}px ${compact ? 6 : 8}px` }}>
@@ -116,21 +120,10 @@ export function ApprovalScreen({ bundle, compact, footer }: {
           <div style={card}>
             <div style={lbl}>変更内容</div>
             <div style={{ marginTop: 2, lineHeight: 1.5 }}>{plan.title}</div>
-            {/* diff はコンソール埋込では左カラムに大きく表示するため省略（決裁操作を最優先で見せる） */}
-            {!compact && (
-              <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, marginTop: 4, color: "#5d6773", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{plan.diff}</div>
-            )}
+            <details style={{ marginTop: 8 }}><summary>変更差分を確認</summary>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 12, marginTop: 4, color: "#5d6773", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{plan.diff}</div>
+            </details>
           </div>
-          {compact ? (
-            // コンソール埋込では影響・復元・事前検証を左カラムに表示するため、
-            // ベゼル内は決裁操作がスクロール無しで見えるよう検証結果1行に絞る
-            <div style={card}>
-              <div style={lbl}>事前検証</div>
-              <div style={{ marginTop: 2, lineHeight: 1.5, color: plan.validation?.verified ? "#1f8a5b" : "#c73a2b", fontWeight: 600 }}>
-                {plan.validation?.verified ? "複製一致 · 業務 3/3 · 遮断維持 · 合格" : "未検証または不合格"}
-              </div>
-            </div>
-          ) : (
             <>
               <div style={card}>
                 <div style={lbl}>想定影響</div>
@@ -149,7 +142,6 @@ export function ApprovalScreen({ bundle, compact, footer }: {
                 <div style={{ marginTop: 2, lineHeight: 1.5 }}>{plan.rollback}</div>
               </div>
             </>
-          )}
         </div>
       )}
 
@@ -178,10 +170,11 @@ export function ApprovalScreen({ bundle, compact, footer }: {
               </span>
               <span style={{ fontWeight: 600, color: "#b9770e" }}>承認待ち</span>
             </div>
-            <button className="btn-green" style={{ borderRadius: 13, padding: compact ? 11 : 14 }} onClick={() => decide("approve")}>
-              承認して適用へ
+            {remain <= 0 && <div role="alert">承認期限が切れました。リセットして再検証してください。</div>}
+            <button className="btn-green" disabled={busy || remain <= 0 || !approver.trim()} style={{ borderRadius: 13, padding: compact ? 11 : 14 }} onClick={() => decide("approve")}>
+              {busy ? "送信中…" : "承認して適用へ"}
             </button>
-            <button className="btn-outline" style={{ borderRadius: 11, color: "#c73a2b", padding: compact ? "8px 12px" : undefined }} onClick={() => decide("reject")}>
+            <button className="btn-outline" disabled={busy || remain <= 0 || !approver.trim()} style={{ borderRadius: 11, color: "#c73a2b", padding: compact ? "8px 12px" : undefined }} onClick={() => decide("reject")}>
               却下（対象環境は変更されません）
             </button>
           </>

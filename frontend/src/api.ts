@@ -24,11 +24,16 @@ export function useBundle(): {
   const [connected, setConnected] = useState(false);
   const [pulse, setPulse] = useState<SimPulse | null>(null);
   const esRef = useRef<EventSource | null>(null);
+  const generation = useRef(0);
+  const [clock, setClock] = useState(Date.now());
+  const lastPulse = useRef(0);
 
   const refresh = async () => {
+    const version = ++generation.current;
     try {
       const r = await fetch("/api/incidents/latest");
       const data = await r.json();
+      if (version !== generation.current) return;
       if (data.incident) setBundle(data);
       else setBundle(EMPTY);
     } catch { /* サーバ未起動時は次の再接続で回復 */ }
@@ -36,6 +41,7 @@ export function useBundle(): {
 
   useEffect(() => {
     let stopped = false;
+    const timer = setInterval(() => setClock(Date.now()), 1000);
 
     const connect = () => {
       if (stopped) return;
@@ -49,14 +55,21 @@ export function useBundle(): {
       };
       es.onmessage = (msg) => {
         const ev = JSON.parse(msg.data);
+        if (ev.type === "demo" && ev.reset) {
+          generation.current++;
+          setBundle(EMPTY);
+          setPulse(null);
+          return;
+        }
         if (ev.type === "sim_pulse") {
+          lastPulse.current = Date.now();
           setPulse(ev.pulse);
           return;
         }
         setBundle((b) => {
           switch (ev.type) {
             case "incident":
-              return { ...b, incident: ev.incident };
+              return { ...(b.incident?.id === ev.incident.id ? b : EMPTY), incident: ev.incident };
             case "evidence":
               return { ...b, evidence: upsert(b.evidence, ev.evidence) };
             case "hypothesis":
@@ -111,10 +124,10 @@ export function useBundle(): {
     };
 
     connect();
-    return () => { stopped = true; esRef.current?.close(); };
+    return () => { stopped = true; clearInterval(timer); generation.current++; esRef.current?.close(); };
   }, []);
 
-  return { bundle, connected, pulse, refresh };
+  return { bundle, connected, pulse: connected && clock - lastPulse.current < 6000 ? pulse : null, refresh };
 }
 
 export function useConfig(): AppConfig | null {

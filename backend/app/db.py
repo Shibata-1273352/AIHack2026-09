@@ -18,6 +18,7 @@ _lock = threading.Lock()
 _conn: sqlite3.Connection | None = None
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS archived_incidents (id TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS incidents (
   id TEXT PRIMARY KEY, created_at TEXT, data TEXT
 );
@@ -69,9 +70,18 @@ def load_incident(incident_id: str) -> dict[str, Any] | None:
 
 def latest_incident() -> dict[str, Any] | None:
     row = conn().execute(
-        "SELECT data FROM incidents ORDER BY created_at DESC, rowid DESC LIMIT 1"
+        "SELECT data FROM incidents WHERE id NOT IN (SELECT id FROM archived_incidents) "
+        "ORDER BY created_at DESC, rowid DESC LIMIT 1"
     ).fetchone()
     return json.loads(row["data"]) if row else None
+
+
+def archive_demo() -> None:
+    """Keep historical evidence, but start the next presentation with no active case."""
+    with _lock:
+        c = conn()
+        c.execute("INSERT OR IGNORE INTO archived_incidents SELECT id FROM incidents")
+        c.commit()
 
 
 def add_record(incident_id: str, kind: str, data: dict[str, Any],

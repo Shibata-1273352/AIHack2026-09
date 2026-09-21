@@ -86,7 +86,7 @@ export function VlmCard({ bundle }: { bundle: Bundle }) {
     <section className="card fadein">
       <div className="card-head">
         <h2>VLM 読取結果</h2>
-        <span className="card-note" style={{ fontFamily: "var(--mono)" }}>{model}{r.model?.outcome === "mock" || r.model?.outcome === "fallback_to_mock" ? " · golden再生" : ""}</span>
+        <span className="card-note" style={{ fontFamily: "var(--mono)" }}>{r.source?.startsWith("registered_table") ? "登録情報 · VLM未実行" : r.source?.startsWith("golden") ? "記録済みVLM応答の再生" : model}</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
         {[["抽出ノード", String(nodes.length), false],
@@ -408,10 +408,11 @@ export function ApplyCard({ bundle }: { bundle: Bundle }) {
 export function VerifyCard({ bundle }: { bundle: Bundle }) {
   const inc = bundle.incident!;
   const lastEx = bundle.executions[bundle.executions.length - 1];
+  const completedAt = inc.status_history.find(h => ["SERVICE_RESTORED", "RESOLVED"].includes(h.status))?.at;
   const bizAfter = [...bundle.evidence].reverse().find(
-    (e) => e.tool === "test_business" && (!lastEx || e.seq > 0) && e.at >= (lastEx?.at ?? ""));
+    (e) => e.tool === "test_business" && e.at >= (lastEx?.at ?? "") && (!completedAt || e.at <= completedAt));
   const forbAfter = [...bundle.evidence].reverse().find(
-    (e) => e.tool === "test_forbidden" && e.at >= (lastEx?.at ?? ""));
+    (e) => e.tool === "test_forbidden" && e.at >= (lastEx?.at ?? "") && (!completedAt || e.at <= completedAt));
   const verifying = inc.status === "VERIFYING";
   const done = inc.status === "SERVICE_RESTORED" || inc.status === "RESOLVED";
 
@@ -438,7 +439,7 @@ export function VerifyCard({ bundle }: { bundle: Bundle }) {
     <>
       <section className="card fadein">
         <div className="card-head">
-          <h2>復旧確認試験（独立検証器）</h2>
+          <h2>案件完了時の復旧確認試験</h2>
           <span className="card-note">利用者と同じ経路 · client → 受注サービス</span>
         </div>
         {rows.map((r, i) => (
@@ -566,7 +567,7 @@ export function InsightRibbon({ bundle, style }: { bundle: Bundle; style?: React
       const pending = (r.comparison?.unmatched_labels?.length ?? 0) + (r.comparison?.missing_registered?.length ?? 0);
       chips.push(
         <RChip key="vlm" fg="var(--blue)" bg="var(--bg-chip-blue)">
-          VLM照合 ✓ ノード{(r.mapped_nodes ?? []).length} · リンク{(r.mapped_links ?? []).length}
+          {r.source?.startsWith("registered_table") ? "登録情報（VLM未実行）" : r.source?.startsWith("golden") ? "VLM記録再生" : "VLM読取"} · ノード{(r.mapped_nodes ?? []).length} · リンク{(r.mapped_links ?? []).length}
           {pending > 0 ? ` · 確認待ち${pending}` : ""}
         </RChip>,
       );

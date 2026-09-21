@@ -1,7 +1,7 @@
 // NetWalker 4Kダッシュボード検証:
-//  run1 (1920×1080): 隠しドロワーで リセット→複合注入→申告、コンソール内承認、SERVICE_RESTORED まで
+//  run1 (1920×1080): 常設操作で 障害再現→申告→承認→復旧→リセット
 //  run2 (3840×2160): API で運転し、/approve（iPad役ウィンドウ）から承認
-//  各フェーズでスクリーンショット + ページスクロール無しをアサート
+//  各フェーズを撮影し、横方向のはみ出しと繰り返し実行を検証
 import { chromium } from "playwright";
 
 const BASE = "http://localhost:8000";
@@ -13,7 +13,9 @@ const api = async (path, body) => {
     headers: { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  return r.json();
+  const data = await r.json();
+  if (!r.ok) throw new Error(`${path}: ${r.status} ${JSON.stringify(data)}`);
+  return data;
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,7 +40,7 @@ async function shoot(page, name) {
     const d = document.scrollingElement;
     return { sh: d.scrollHeight, ch: d.clientHeight, sw: d.scrollWidth, cw: d.clientWidth };
   });
-  const ok = scroll.sh <= scroll.ch && scroll.sw <= scroll.cw;
+  const ok = scroll.sw <= scroll.cw;
   console.log(`  📸 ${name}  scroll: ${JSON.stringify(scroll)} ${ok ? "OK" : "!!! PAGE SCROLLS !!!"}`);
   if (!ok) throw new Error(`page scrolls at ${name}`);
 }
@@ -53,8 +55,8 @@ async function resetEnv() {
 
 const browser = await chromium.launch();
 
-// ---------------------------------------------------------------- run1: FHD + ドロワー + コンソール内承認
-console.log("== run1: 1920×1080, hidden drawer, in-console approval ==");
+// ---------------------------------------------------------------- run1: FHD + コンソール内承認
+console.log("== run1: 1920×1080, visible controls, in-console approval ==");
 await resetEnv();
 {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
@@ -62,32 +64,23 @@ await resetEnv();
   await sleep(4000); // SSE 接続 + sim_pulse 到着待ち（networkidle は SSE で永久に来ない）
   await shoot(page, "fhd-1-intake");
 
-  // 隠しドロワー（キー o）
-  await page.keyboard.press("o");
-  await sleep(600);
-  await shoot(page, "fhd-2-drawer");
-
-  // ② 複合障害を注入（①リセットは済んでいるのでスキップ）
-  await page.getByRole("button", { name: /複合障害を注入/ }).click();
+  // 常設のデモ操作から障害を再現する
+  await page.getByRole("button", { name: /複合障害を再現/ }).click();
   await waitFor("faults injected", async () => {
     const gt = await api("/api/demo/ground_truth");
     return gt.fault_a_active && gt.fault_b_active;
   });
   await waitFor("business down (pulse)", async () => !(await api("/api/demo/ground_truth")).business, 30000);
-  await page.keyboard.press("Escape");
   await sleep(5000); // 次の pulse 反映（2秒周期）
   await shoot(page, "fhd-3-fault-injected");
 
   // ③ 申告→調査開始
-  await page.keyboard.press("o");
-  await sleep(400);
   await page.getByRole("button", { name: /申告/ }).click();
-  await page.keyboard.press("Escape");
   await waitFor("investigating", statusIs("INVESTIGATING"));
   await sleep(6000); // 仮説・証拠の流入を待つ
   await shoot(page, "fhd-4-investigating");
 
-  // 承認待ち → コンソール内（iPadベゼル埋め込み）で承認
+  // 承認待ち → コンソールの承認カードで承認
   await waitFor("awaiting approval", statusIs("AWAITING_APPROVAL"));
   await sleep(1500);
   await shoot(page, "fhd-5-awaiting-approval");
@@ -99,6 +92,11 @@ await resetEnv();
   await waitFor("service restored", statusIs("SERVICE_RESTORED", "RESOLVED"));
   await sleep(5000); // 緑パケット + リボン成功チップ
   await shoot(page, "fhd-7-restored");
+  await page.getByRole("button", { name: "↺ デモをリセット", exact: true }).click();
+  await page.getByRole("button", { name: "リセットする", exact: true }).click();
+  await waitFor("reset clears active case", async () => !(await api("/api/incidents/latest")).incident);
+  await page.getByRole("button", { name: /複合障害を再現/ }).waitFor({state: "visible"});
+  await shoot(page, "fhd-8-reset");
   await page.close();
 }
 

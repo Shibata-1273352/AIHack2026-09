@@ -29,7 +29,12 @@ def inject(fault: str) -> dict[str, Any]:
 
 def reset() -> dict[str, Any]:
     with _client() as c:
-        return c.post("/admin/reset").json()
+        response = c.post("/admin/reset")
+        response.raise_for_status()
+        result = response.json()
+        if result.get("ok") is False:
+            raise RuntimeError("シミュレータのリセットに失敗しました")
+        return result
 
 
 def ground_truth() -> dict[str, Any]:
