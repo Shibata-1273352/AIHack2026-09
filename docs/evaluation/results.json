@@ -1,61 +1,262 @@
 {
-  "generated_at": "2026-09-21 22:37 JST",
+  "generated_at": "2026-09-22 01:34 JST",
   "route_mode": "live",
-  "trials_per_variant": 3,
+  "policy_version": "netwalker-v2",
+  "trials_per_variant": 2,
   "order": [
     "A",
     "B",
+    "BS",
     "R"
   ],
+  "conditions": [
+    "T04",
+    "C0",
+    "C1"
+  ],
   "summary": {
-    "A": {
-      "trials": 3,
-      "success": 3,
+    "A|T04": {
+      "routers": [],
+      "cost_actual_calls": 10,
+      "trials": 2,
+      "success": 2,
       "success_rate": 1.0,
       "needs_human_rate": 0.0,
-      "mean_elapsed_sec": 124.67,
-      "mean_llm_calls": 5.33,
-      "mean_tool_calls": 13.33,
-      "mean_tokens": 12196.0,
-      "total_cost_usd": 0.179137,
-      "mean_cost_usd": 0.059712,
-      "cost_per_success_usd": 0.059712,
+      "mean_elapsed_sec": 133.8,
+      "mean_llm_calls": 5.0,
+      "mean_tool_calls": 13.0,
+      "mean_tokens": 16126.0,
+      "total_cost_usd": 0.166706,
+      "mean_cost_usd": 0.083353,
+      "cost_per_success_usd": 0.083353,
       "models": [
-        "gpt-5-2025-08-07"
-      ],
-      "fallbacks": 2
-    },
-    "B": {
-      "trials": 3,
-      "success": 3,
-      "success_rate": 1.0,
-      "needs_human_rate": 0.0,
-      "mean_elapsed_sec": 72.43,
-      "mean_llm_calls": 12.0,
-      "mean_tool_calls": 27.0,
-      "mean_tokens": 93154.67,
-      "total_cost_usd": 0.043759,
-      "mean_cost_usd": 0.014586,
-      "cost_per_success_usd": 0.014586,
-      "models": [
-        "gpt-4o-mini-2024-07-18"
+        "openai/gpt-5"
       ],
       "fallbacks": 0
     },
-    "R": {
-      "trials": 3,
-      "success": 3,
+    "A|C0": {
+      "routers": [],
+      "cost_actual_calls": 5,
+      "trials": 2,
+      "success": 2,
       "success_rate": 1.0,
       "needs_human_rate": 0.0,
-      "mean_elapsed_sec": 32.2,
+      "mean_elapsed_sec": 68.35,
+      "mean_llm_calls": 2.5,
+      "mean_tool_calls": 4.5,
+      "mean_tokens": 7982.5,
+      "total_cost_usd": 0.095454,
+      "mean_cost_usd": 0.047727,
+      "cost_per_success_usd": 0.047727,
+      "models": [
+        "openai/gpt-5"
+      ],
+      "fallbacks": 0
+    },
+    "A|C1": {
+      "routers": [],
+      "cost_actual_calls": 4,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 66.35,
+      "mean_llm_calls": 2.0,
+      "mean_tool_calls": 5.0,
+      "mean_tokens": 6655.0,
+      "total_cost_usd": 0.08576,
+      "mean_cost_usd": 0.04288,
+      "cost_per_success_usd": 0.04288,
+      "models": [
+        "openai/gpt-5"
+      ],
+      "fallbacks": 0
+    },
+    "B|T04": {
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 13,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 134.8,
+      "mean_llm_calls": 6.5,
+      "mean_tool_calls": 14.5,
+      "mean_tokens": 14321.0,
+      "total_cost_usd": 0.002268,
+      "mean_cost_usd": 0.001134,
+      "cost_per_success_usd": 0.001134,
+      "models": [
+        "gpt-5.6-luna",
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0
+    },
+    "B|C0": {
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 18,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 232.05,
+      "mean_llm_calls": 9.0,
+      "mean_tool_calls": 11.0,
+      "mean_tokens": 22569.0,
+      "total_cost_usd": 0.003822,
+      "mean_cost_usd": 0.001911,
+      "cost_per_success_usd": 0.001911,
+      "models": [
+        "openai/gpt-5.4-nano",
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0
+    },
+    "B|C1": {
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 12,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 84.5,
+      "mean_llm_calls": 6.0,
+      "mean_tool_calls": 9.0,
+      "mean_tokens": 12961.0,
+      "total_cost_usd": 0.001618,
+      "mean_cost_usd": 0.000809,
+      "cost_per_success_usd": 0.000809,
+      "models": [
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0
+    },
+    "BS|T04": {
+      "routers": [],
+      "cost_actual_calls": 24,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 79.5,
+      "mean_llm_calls": 12.0,
+      "mean_tool_calls": 27.0,
+      "mean_tokens": 21463.5,
+      "total_cost_usd": 0.009392,
+      "mean_cost_usd": 0.004696,
+      "cost_per_success_usd": 0.004696,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0
+    },
+    "BS|C0": {
+      "routers": [],
+      "cost_actual_calls": 9,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 15.1,
+      "mean_llm_calls": 4.5,
+      "mean_tool_calls": 6.5,
+      "mean_tokens": 7839.5,
+      "total_cost_usd": 0.003788,
+      "mean_cost_usd": 0.001894,
+      "cost_per_success_usd": 0.001894,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0
+    },
+    "BS|C1": {
+      "routers": [],
+      "cost_actual_calls": 8,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 14.1,
+      "mean_llm_calls": 4.0,
+      "mean_tool_calls": 7.0,
+      "mean_tokens": 6363.0,
+      "total_cost_usd": 0.003178,
+      "mean_cost_usd": 0.001589,
+      "cost_per_success_usd": 0.001589,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0
+    },
+    "R|T04": {
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 2,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 39.2,
       "mean_llm_calls": 1.0,
       "mean_tool_calls": 15.0,
-      "mean_tokens": 37391.33,
-      "total_cost_usd": 0.017138,
-      "mean_cost_usd": 0.005713,
-      "cost_per_success_usd": 0.005713,
+      "mean_tokens": 2165.5,
+      "total_cost_usd": 0.000348,
+      "mean_cost_usd": 0.000174,
+      "cost_per_success_usd": 0.000174,
       "models": [
-        "gpt-4o-mini-2024-07-18"
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0
+    },
+    "R|C0": {
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 2,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 12.1,
+      "mean_llm_calls": 1.0,
+      "mean_tool_calls": 3.0,
+      "mean_tokens": 2174.5,
+      "total_cost_usd": 0.00035,
+      "mean_cost_usd": 0.000175,
+      "cost_per_success_usd": 0.000175,
+      "models": [
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0
+    },
+    "R|C1": {
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 2,
+      "trials": 2,
+      "success": 2,
+      "success_rate": 1.0,
+      "needs_human_rate": 0.0,
+      "mean_elapsed_sec": 13.1,
+      "mean_llm_calls": 1.0,
+      "mean_tool_calls": 5.0,
+      "mean_tokens": 2166.0,
+      "total_cost_usd": 0.000348,
+      "mean_cost_usd": 0.000174,
+      "cost_per_success_usd": 0.000174,
+      "models": [
+        "qwen/qwen3.7-flash"
       ],
       "fallbacks": 0
     }
@@ -63,192 +264,635 @@
   "trials": [
     {
       "variant": "A",
+      "condition": "T04",
       "trial": 1,
       "status": "SERVICE_RESTORED",
       "success": true,
+      "verdict": "原因を特定し、承認された1件だけを適用して復旧",
+      "routers": [],
+      "cost_actual_calls": 4,
       "needs_human": false,
-      "elapsed_sec": 134.7,
-      "approved_at_sec": 128.7,
-      "llm_calls": 6,
-      "input_tokens": 7712,
-      "output_tokens": 4846,
-      "cost_usd": 0.0581,
-      "cost_unpriced_calls": 1,
-      "tool_calls": 14,
-      "models": [
-        "gpt-5-2025-08-07"
-      ],
-      "fallbacks": 1,
-      "residual_issues": 1,
-      "incident_id": "inc-e724d050"
-    },
-    {
-      "variant": "A",
-      "trial": 2,
-      "status": "SERVICE_RESTORED",
-      "success": true,
-      "needs_human": false,
-      "elapsed_sec": 136.7,
-      "approved_at_sec": 130.7,
-      "llm_calls": 6,
-      "input_tokens": 7712,
-      "output_tokens": 5728,
-      "cost_usd": 0.06692,
-      "cost_unpriced_calls": 1,
-      "tool_calls": 14,
-      "models": [
-        "gpt-5-2025-08-07"
-      ],
-      "fallbacks": 1,
-      "residual_issues": 1,
-      "incident_id": "inc-1dd96bbb"
-    },
-    {
-      "variant": "A",
-      "trial": 3,
-      "status": "SERVICE_RESTORED",
-      "success": true,
-      "needs_human": false,
-      "elapsed_sec": 102.6,
-      "approved_at_sec": 96.6,
+      "elapsed_sec": 112.7,
+      "approved_at_sec": 106.6,
       "llm_calls": 4,
-      "input_tokens": 5918,
-      "output_tokens": 4672,
-      "cost_usd": 0.054117,
+      "input_tokens": 5948,
+      "output_tokens": 6817,
+      "cost_usd": 0.071142,
       "cost_unpriced_calls": 0,
       "tool_calls": 12,
       "models": [
-        "gpt-5-2025-08-07"
+        "openai/gpt-5"
       ],
       "fallbacks": 0,
       "residual_issues": 1,
-      "incident_id": "inc-830cc292"
+      "incident_id": "inc-ca57d790"
     },
     {
-      "variant": "B",
-      "trial": 1,
-      "status": "SERVICE_RESTORED",
-      "success": true,
-      "needs_human": false,
-      "elapsed_sec": 74.5,
-      "approved_at_sec": 68.4,
-      "llm_calls": 12,
-      "input_tokens": 91621,
-      "output_tokens": 1331,
-      "cost_usd": 0.014542,
-      "cost_unpriced_calls": 0,
-      "tool_calls": 27,
-      "models": [
-        "gpt-4o-mini-2024-07-18"
-      ],
-      "fallbacks": 0,
-      "residual_issues": 1,
-      "incident_id": "inc-bd75db40"
-    },
-    {
-      "variant": "B",
+      "variant": "A",
+      "condition": "T04",
       "trial": 2,
       "status": "SERVICE_RESTORED",
       "success": true,
+      "verdict": "原因を特定し、承認された1件だけを適用して復旧",
+      "routers": [],
+      "cost_actual_calls": 6,
       "needs_human": false,
-      "elapsed_sec": 68.4,
-      "approved_at_sec": 62.4,
-      "llm_calls": 12,
-      "input_tokens": 92086,
-      "output_tokens": 1402,
-      "cost_usd": 0.014654,
+      "elapsed_sec": 154.9,
+      "approved_at_sec": 148.9,
+      "llm_calls": 6,
+      "input_tokens": 10329,
+      "output_tokens": 9158,
+      "cost_usd": 0.095564,
       "cost_unpriced_calls": 0,
-      "tool_calls": 27,
+      "tool_calls": 14,
       "models": [
-        "gpt-4o-mini-2024-07-18"
+        "openai/gpt-5"
       ],
       "fallbacks": 0,
       "residual_issues": 1,
-      "incident_id": "inc-6260f0fd"
+      "incident_id": "inc-710263c0"
     },
     {
-      "variant": "B",
-      "trial": 3,
-      "status": "SERVICE_RESTORED",
+      "variant": "A",
+      "condition": "C0",
+      "trial": 1,
+      "status": "RESOLVED",
       "success": true,
+      "verdict": "変更を提案せず正常と判定",
+      "routers": [],
+      "cost_actual_calls": 2,
       "needs_human": false,
-      "elapsed_sec": 74.4,
-      "approved_at_sec": 68.4,
-      "llm_calls": 12,
-      "input_tokens": 91670,
-      "output_tokens": 1354,
-      "cost_usd": 0.014563,
+      "elapsed_sec": 66.3,
+      "approved_at_sec": null,
+      "llm_calls": 2,
+      "input_tokens": 2563,
+      "output_tokens": 4389,
+      "cost_usd": 0.045798,
       "cost_unpriced_calls": 0,
-      "tool_calls": 27,
+      "tool_calls": 4,
       "models": [
-        "gpt-4o-mini-2024-07-18"
+        "openai/gpt-5"
       ],
       "fallbacks": 0,
-      "residual_issues": 1,
-      "incident_id": "inc-6668417d"
+      "residual_issues": 0,
+      "incident_id": "inc-5a9386ea"
     },
     {
-      "variant": "R",
+      "variant": "A",
+      "condition": "C0",
+      "trial": 2,
+      "status": "RESOLVED",
+      "success": true,
+      "verdict": "変更を提案せず正常と判定",
+      "routers": [],
+      "cost_actual_calls": 3,
+      "needs_human": false,
+      "elapsed_sec": 70.4,
+      "approved_at_sec": null,
+      "llm_calls": 3,
+      "input_tokens": 4428,
+      "output_tokens": 4585,
+      "cost_usd": 0.049656,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 5,
+      "models": [
+        "openai/gpt-5"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 0,
+      "incident_id": "inc-df03d98e"
+    },
+    {
+      "variant": "A",
+      "condition": "C1",
       "trial": 1,
       "status": "SERVICE_RESTORED",
       "success": true,
+      "verdict": "変更せず、主回線断を残存課題として引き継いだ",
+      "routers": [],
+      "cost_actual_calls": 2,
       "needs_human": false,
-      "elapsed_sec": 32.2,
-      "approved_at_sec": 26.1,
-      "llm_calls": 1,
-      "input_tokens": 37160,
-      "output_tokens": 234,
-      "cost_usd": 0.005714,
+      "elapsed_sec": 54.3,
+      "approved_at_sec": null,
+      "llm_calls": 2,
+      "input_tokens": 2554,
+      "output_tokens": 3372,
+      "cost_usd": 0.035616,
       "cost_unpriced_calls": 0,
-      "tool_calls": 15,
+      "tool_calls": 5,
       "models": [
-        "gpt-4o-mini-2024-07-18"
+        "openai/gpt-5"
       ],
       "fallbacks": 0,
       "residual_issues": 1,
-      "incident_id": "inc-a6be11d0"
+      "incident_id": "inc-5538e0fd"
     },
     {
-      "variant": "R",
+      "variant": "A",
+      "condition": "C1",
       "trial": 2,
       "status": "SERVICE_RESTORED",
       "success": true,
+      "verdict": "変更せず、主回線断を残存課題として引き継いだ",
+      "routers": [],
+      "cost_actual_calls": 2,
       "needs_human": false,
-      "elapsed_sec": 32.2,
-      "approved_at_sec": 26.1,
-      "llm_calls": 1,
-      "input_tokens": 37160,
-      "output_tokens": 230,
-      "cost_usd": 0.005712,
+      "elapsed_sec": 78.4,
+      "approved_at_sec": null,
+      "llm_calls": 2,
+      "input_tokens": 2560,
+      "output_tokens": 4824,
+      "cost_usd": 0.050144,
       "cost_unpriced_calls": 0,
-      "tool_calls": 15,
+      "tool_calls": 5,
       "models": [
-        "gpt-4o-mini-2024-07-18"
+        "openai/gpt-5"
       ],
       "fallbacks": 0,
       "residual_issues": 1,
-      "incident_id": "inc-30a9c6cc"
+      "incident_id": "inc-a82d3373"
+    },
+    {
+      "variant": "B",
+      "condition": "T04",
+      "trial": 1,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "原因を特定し、承認された1件だけを適用して復旧",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 8,
+      "needs_human": false,
+      "elapsed_sec": 173.1,
+      "approved_at_sec": 167.0,
+      "llm_calls": 8,
+      "input_tokens": 13272,
+      "output_tokens": 4168,
+      "cost_usd": 0.001068,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 16,
+      "models": [
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-2be2230d"
+    },
+    {
+      "variant": "B",
+      "condition": "T04",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "原因を特定し、承認された1件だけを適用して復旧",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 5,
+      "needs_human": false,
+      "elapsed_sec": 96.5,
+      "approved_at_sec": 90.4,
+      "llm_calls": 5,
+      "input_tokens": 8816,
+      "output_tokens": 2386,
+      "cost_usd": 0.0012,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 13,
+      "models": [
+        "gpt-5.6-luna",
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-7751cd1a"
+    },
+    {
+      "variant": "B",
+      "condition": "C0",
+      "trial": 1,
+      "status": "RESOLVED",
+      "success": true,
+      "verdict": "変更を提案せず正常と判定",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 8,
+      "needs_human": false,
+      "elapsed_sec": 198.9,
+      "approved_at_sec": null,
+      "llm_calls": 8,
+      "input_tokens": 13480,
+      "output_tokens": 8608,
+      "cost_usd": 0.0024,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 10,
+      "models": [
+        "openai/gpt-5.4-nano",
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 0,
+      "incident_id": "inc-a7277c24"
+    },
+    {
+      "variant": "B",
+      "condition": "C0",
+      "trial": 2,
+      "status": "RESOLVED",
+      "success": true,
+      "verdict": "変更を提案せず正常と判定",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 10,
+      "needs_human": false,
+      "elapsed_sec": 265.2,
+      "approved_at_sec": null,
+      "llm_calls": 10,
+      "input_tokens": 17542,
+      "output_tokens": 5508,
+      "cost_usd": 0.001422,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 12,
+      "models": [
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 0,
+      "incident_id": "inc-dd8e9a90"
+    },
+    {
+      "variant": "B",
+      "condition": "C1",
+      "trial": 1,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "変更せず、主回線断を残存課題として引き継いだ",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 7,
+      "needs_human": false,
+      "elapsed_sec": 76.5,
+      "approved_at_sec": null,
+      "llm_calls": 7,
+      "input_tokens": 11370,
+      "output_tokens": 3743,
+      "cost_usd": 0.00093,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 10,
+      "models": [
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-1e37966c"
+    },
+    {
+      "variant": "B",
+      "condition": "C1",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "変更せず、主回線断を残存課題として引き継いだ",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 5,
+      "needs_human": false,
+      "elapsed_sec": 92.5,
+      "approved_at_sec": null,
+      "llm_calls": 5,
+      "input_tokens": 7896,
+      "output_tokens": 2913,
+      "cost_usd": 0.000688,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 8,
+      "models": [
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-8895af96"
+    },
+    {
+      "variant": "BS",
+      "condition": "T04",
+      "trial": 1,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "原因を特定し、承認された1件だけを適用して復旧",
+      "routers": [],
+      "cost_actual_calls": 12,
+      "needs_human": false,
+      "elapsed_sec": 80.5,
+      "approved_at_sec": 74.5,
+      "llm_calls": 12,
+      "input_tokens": 18786,
+      "output_tokens": 2554,
+      "cost_usd": 0.004922,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 27,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-8f8f9d21"
+    },
+    {
+      "variant": "BS",
+      "condition": "T04",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "原因を特定し、承認された1件だけを適用して復旧",
+      "routers": [],
+      "cost_actual_calls": 12,
+      "needs_human": false,
+      "elapsed_sec": 78.5,
+      "approved_at_sec": 72.5,
+      "llm_calls": 12,
+      "input_tokens": 18984,
+      "output_tokens": 2603,
+      "cost_usd": 0.00447,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 27,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-b83483cf"
+    },
+    {
+      "variant": "BS",
+      "condition": "C0",
+      "trial": 1,
+      "status": "RESOLVED",
+      "success": true,
+      "verdict": "変更を提案せず正常と判定",
+      "routers": [],
+      "cost_actual_calls": 3,
+      "needs_human": false,
+      "elapsed_sec": 10.1,
+      "approved_at_sec": null,
+      "llm_calls": 3,
+      "input_tokens": 4052,
+      "output_tokens": 635,
+      "cost_usd": 0.001236,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 5,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 0,
+      "incident_id": "inc-c8bf0682"
+    },
+    {
+      "variant": "BS",
+      "condition": "C0",
+      "trial": 2,
+      "status": "RESOLVED",
+      "success": true,
+      "verdict": "変更を提案せず正常と判定",
+      "routers": [],
+      "cost_actual_calls": 6,
+      "needs_human": false,
+      "elapsed_sec": 20.1,
+      "approved_at_sec": null,
+      "llm_calls": 6,
+      "input_tokens": 9602,
+      "output_tokens": 1390,
+      "cost_usd": 0.002552,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 8,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 0,
+      "incident_id": "inc-1a7f9360"
+    },
+    {
+      "variant": "BS",
+      "condition": "C1",
+      "trial": 1,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "変更せず、主回線断を残存課題として引き継いだ",
+      "routers": [],
+      "cost_actual_calls": 4,
+      "needs_human": false,
+      "elapsed_sec": 14.1,
+      "approved_at_sec": null,
+      "llm_calls": 4,
+      "input_tokens": 5605,
+      "output_tokens": 860,
+      "cost_usd": 0.001596,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 7,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-9450cc75"
+    },
+    {
+      "variant": "BS",
+      "condition": "C1",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "変更せず、主回線断を残存課題として引き継いだ",
+      "routers": [],
+      "cost_actual_calls": 4,
+      "needs_human": false,
+      "elapsed_sec": 14.1,
+      "approved_at_sec": null,
+      "llm_calls": 4,
+      "input_tokens": 5418,
+      "output_tokens": 843,
+      "cost_usd": 0.001582,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 7,
+      "models": [
+        "openai/gpt-5.4-nano"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-3538132b"
     },
     {
       "variant": "R",
-      "trial": 3,
+      "condition": "T04",
+      "trial": 1,
       "status": "SERVICE_RESTORED",
       "success": true,
+      "verdict": "原因を特定し、承認された1件だけを適用して復旧",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 1,
       "needs_human": false,
-      "elapsed_sec": 32.2,
-      "approved_at_sec": 26.1,
+      "elapsed_sec": 40.2,
+      "approved_at_sec": 34.2,
       "llm_calls": 1,
-      "input_tokens": 37160,
-      "output_tokens": 230,
-      "cost_usd": 0.005712,
+      "input_tokens": 1068,
+      "output_tokens": 1098,
+      "cost_usd": 0.000174,
       "cost_unpriced_calls": 0,
       "tool_calls": 15,
       "models": [
-        "gpt-4o-mini-2024-07-18"
+        "qwen/qwen3.7-flash"
       ],
       "fallbacks": 0,
       "residual_issues": 1,
-      "incident_id": "inc-9f1e356e"
+      "incident_id": "inc-caeca6a5"
+    },
+    {
+      "variant": "R",
+      "condition": "T04",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "原因を特定し、承認された1件だけを適用して復旧",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 1,
+      "needs_human": false,
+      "elapsed_sec": 38.2,
+      "approved_at_sec": 32.1,
+      "llm_calls": 1,
+      "input_tokens": 1068,
+      "output_tokens": 1097,
+      "cost_usd": 0.000174,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 15,
+      "models": [
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-be236d61"
+    },
+    {
+      "variant": "R",
+      "condition": "C0",
+      "trial": 1,
+      "status": "RESOLVED",
+      "success": true,
+      "verdict": "変更を提案せず正常と判定",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 1,
+      "needs_human": false,
+      "elapsed_sec": 12.1,
+      "approved_at_sec": null,
+      "llm_calls": 1,
+      "input_tokens": 1068,
+      "output_tokens": 1115,
+      "cost_usd": 0.000176,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 3,
+      "models": [
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 0,
+      "incident_id": "inc-3676ef4a"
+    },
+    {
+      "variant": "R",
+      "condition": "C0",
+      "trial": 2,
+      "status": "RESOLVED",
+      "success": true,
+      "verdict": "変更を提案せず正常と判定",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 1,
+      "needs_human": false,
+      "elapsed_sec": 12.1,
+      "approved_at_sec": null,
+      "llm_calls": 1,
+      "input_tokens": 1068,
+      "output_tokens": 1098,
+      "cost_usd": 0.000174,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 3,
+      "models": [
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 0,
+      "incident_id": "inc-b9cec331"
+    },
+    {
+      "variant": "R",
+      "condition": "C1",
+      "trial": 1,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "変更せず、主回線断を残存課題として引き継いだ",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 1,
+      "needs_human": false,
+      "elapsed_sec": 12.1,
+      "approved_at_sec": null,
+      "llm_calls": 1,
+      "input_tokens": 1068,
+      "output_tokens": 1098,
+      "cost_usd": 0.000174,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 5,
+      "models": [
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-d7666696"
+    },
+    {
+      "variant": "R",
+      "condition": "C1",
+      "trial": 2,
+      "status": "SERVICE_RESTORED",
+      "success": true,
+      "verdict": "変更せず、主回線断を残存課題として引き継いだ",
+      "routers": [
+        "fusion-flash"
+      ],
+      "cost_actual_calls": 1,
+      "needs_human": false,
+      "elapsed_sec": 14.1,
+      "approved_at_sec": null,
+      "llm_calls": 1,
+      "input_tokens": 1068,
+      "output_tokens": 1098,
+      "cost_usd": 0.000174,
+      "cost_unpriced_calls": 0,
+      "tool_calls": 5,
+      "models": [
+        "qwen/qwen3.7-flash"
+      ],
+      "fallbacks": 0,
+      "residual_issues": 1,
+      "incident_id": "inc-30a6b9af"
     }
   ]
 }

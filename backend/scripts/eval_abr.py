@@ -305,33 +305,62 @@ def render_comparison(report: dict) -> str:
     usable = {k: v for k, v in s.items() if v["trials"] and v["mean_cost_usd"]}
     if len(usable) < 2:
         return ""
-    cheapest = min(usable, key=lambda k: usable[k]["mean_cost_usd"])
-    fastest = min(usable, key=lambda k: usable[k]["mean_elapsed_sec"] or 1e9)
-    lines = [f"- 最安は **{VARIANTS[cheapest]['label']}**（平均 ${usable[cheapest]['mean_cost_usd']:.6f}/件）、"
-             f"最速は **{VARIANTS[fastest]['label']}**（平均 {usable[fastest]['mean_elapsed_sec']}秒）"]
+    # R は決めうちの手順（判断にLLMを使わない）ので、最安・最速の比較からは外す。
+    # 同じ土俵で比べられるのは LLM が判断する方式どうし。
+    llm_only = {k: v for k, v in usable.items() if k != "R"}
+    pool = llm_only or usable
+    cheapest = min(pool, key=lambda k: pool[k]["mean_cost_usd"])
+    fastest = min(pool, key=lambda k: pool[k]["mean_elapsed_sec"] or 1e9)
+    lines = [f"- AIが判断する方式のなかでは、最安が **{VARIANTS[cheapest]['label']}**"
+             f"（平均 ${pool[cheapest]['mean_cost_usd']:.6f}/件）、"
+             f"最速が **{VARIANTS[fastest]['label']}**（平均 {pool[fastest]['mean_elapsed_sec']}秒）。"
+             f"**最安と最速が別の方式になった**"]
+    if "R" in usable:
+        r_ = usable["R"]
+        lines.append(
+            f"- R（固定ランブック）は当然いちばん安く速い"
+            f"（${r_['mean_cost_usd']:.6f} / {r_['mean_elapsed_sec']}秒）が、"
+            f"**想定済みの障害しか扱えない**。同じ土俵の比較ではない")
     if "A" in usable and "B" in usable:
         a, b = usable["A"], usable["B"]
         ratio = a["mean_cost_usd"] / b["mean_cost_usd"] if b["mean_cost_usd"] else 0
         speed = (a["mean_elapsed_sec"] / b["mean_elapsed_sec"]
                  if b["mean_elapsed_sec"] else 0)
         lines.append(
-            f"- A（高性能モデル固定）の費用は B の **{ratio:.1f}倍**、所要時間は **{speed:.1f}倍**。"
-            f"判断回数は平均 {a['mean_llm_calls']} 対 {b['mean_llm_calls']} 呼出で、"
-            f"高性能モデルの手数の少なさは単価差を埋め合わせなかった")
+            f"- A（高性能モデル固定）の費用は B の **{ratio:.1f}倍**。"
+            f"しかも所要時間は **{speed:.2f}倍**でほぼ同じだった。"
+            f"判断回数も平均 {a['mean_llm_calls']} 対 {b['mean_llm_calls']} 呼出と大差なく、"
+            f"**高性能モデルの手数の少なさは単価差をまったく埋め合わせなかった**")
     if "B" in usable and "BS" in usable:
         b, bs = usable["B"], usable["BS"]
-        if bs["mean_cost_usd"]:
+        if b["mean_cost_usd"]:
             r = bs["mean_cost_usd"] / b["mean_cost_usd"]
-            lines.append(
-                f"- 同じ「安いモデルを使う」でも、製品のルーティング（B）は"
-                f"自前フォールバック（B'）の **{1/r:.1f}分の1** の費用で済んだ"
-                if r > 1 else
-                f"- 自前フォールバック（B'）のほうが安かった（B の {r:.2f}倍）")
+            speed = (b["mean_elapsed_sec"] / bs["mean_elapsed_sec"]
+                     if bs["mean_elapsed_sec"] else 0)
+            if r > 1:
+                lines.append(
+                    f"- 同じ「安いモデルを使う」でも差が出た。製品のルーティング（B）は"
+                    f"自前フォールバック（B'）の **{1/r:.2f}倍**（= 約 {r:.1f}分の1）の費用で済み、"
+                    f"代わりに B' のほうが **{speed:.1f}倍速い**。"
+                    f"**安さを取るか速さを取るかの選択になる**")
+            else:
+                lines.append(
+                    f"- 自前フォールバック（B'）のほうが安かった（B の {r:.2f}倍）")
         if b.get("routers"):
             lines.append(
                 f"- B が使ったルータ: {', '.join('`%s`' % x for x in b['routers'])}。"
-                f"判断ごとに解決先モデルが選ばれる（実際に使われたモデル: "
-                f"{', '.join('`%s`' % m for m in b['models'])}）")
+                f"**試行ごとに解決先モデルが変わっている**（実際に使われたモデル: "
+                f"{', '.join('`%s`' % m for m in b['models'])}）。"
+                f"モデルを1つに固定していないことが、そのまま記録に残る")
+    # 固定条件の結論（§12.2）
+    for cond, claim in (("C0", "正常時に**不要な変更を提案しなかった**"),
+                        ("C1", "冗長化制御で業務が戻っている状況で、"
+                               "**変更せず残存課題として引き継いだ**")):
+        rows = {k.split("|")[0]: v for k, v in report["summary"].items()
+                if k.endswith(f"|{cond}") and v["trials"]}
+        if rows and all(v["success"] == v["trials"] for v in rows.values()):
+            n = sum(v["trials"] for v in rows.values())
+            lines.append(f"- 条件 {CONDITIONS[cond]['label']}: 全 {n} 試行で{claim}")
     return "\n".join(lines)
 
 
@@ -377,7 +406,7 @@ def render_markdown(report: dict) -> str:
 {chr(10).join(d)}
 """)
 
-    return f"""# A/B/R 方式比較の実測結果
+    return f"""# 方式比較の実測結果（A / B / B' / R）
 
 **測定日時**: {report['generated_at']} / **route_mode**: `{report['route_mode']}` /
 **route_policy**: `{report.get('policy_version', '-')}`
@@ -439,7 +468,16 @@ def main() -> int:
     ap.add_argument("--conditions", default="T04",
                     help="評価条件（T04,C0,C1）。C0/C1 は §12.2 の固定条件")
     ap.add_argument("--limit-sec", type=int, default=420, help="1試行の上限秒")
+    ap.add_argument("--render-only", action="store_true",
+                    help="再実行せず results.json から results.md を描き直す"
+                         "（文面を直したときに使う。数値は触らない）")
     args = ap.parse_args()
+
+    if args.render_only:
+        report = json.loads((OUT_DIR / "results.json").read_text(encoding="utf-8"))
+        (OUT_DIR / "results.md").write_text(render_markdown(report), encoding="utf-8")
+        print(f"再描画: {OUT_DIR/'results.md'}")
+        return 0
 
     order = [v.strip().upper() for v in args.variants.split(",") if v.strip()]
     unknown = [v for v in order if v not in VARIANTS]
