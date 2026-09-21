@@ -4,13 +4,21 @@
 //  各フェーズを撮影し、横方向のはみ出しと繰り返し実行を検証
 import { chromium } from "playwright";
 
-const BASE = "http://localhost:8000";
+const BASE = process.env.NW_BASE ?? "http://localhost:8000";
 const SHOTS = process.env.SHOTS_DIR ?? "./shots";
+// 変更系API（承認・注入・リセット）の操作トークン。demo.sh が表示する値を
+// APPROVAL_TOKEN で渡す。サーバ側が未設定（開発モード）なら空でよい。
+const TOKEN = process.env.APPROVAL_TOKEN ?? "";
+// 画面側は ?token= から取り込んで localStorage に保持する
+const ui = (path) => BASE + path + (TOKEN ? `?token=${encodeURIComponent(TOKEN)}` : "");
 
 const api = async (path, body) => {
   const r = await fetch(BASE + path, {
     method: body === undefined ? "GET" : "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(TOKEN ? { "X-Netwalker-Token": TOKEN } : {}),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await r.json();
@@ -60,7 +68,7 @@ console.log("== run1: 1920×1080, visible controls, in-console approval ==");
 await resetEnv();
 {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-  await page.goto(BASE + "/console", { waitUntil: "load" });
+  await page.goto(ui("/console"), { waitUntil: "load" });
   await sleep(4000); // SSE 接続 + sim_pulse 到着待ち（networkidle は SSE で永久に来ない）
   await shoot(page, "fhd-1-intake");
 
@@ -105,7 +113,7 @@ console.log("== run2: 3840×2160, /approve approval ==");
 await resetEnv();
 {
   const page = await browser.newPage({ viewport: { width: 3840, height: 2160 } });
-  await page.goto(BASE + "/console", { waitUntil: "load" });
+  await page.goto(ui("/console"), { waitUntil: "load" });
   await sleep(4000);
   await shoot(page, "4k-1-intake");
 
@@ -125,7 +133,7 @@ await resetEnv();
 
   // iPad 役ウィンドウ（/approve はステージ非適用・レスポンシブのまま）
   const ipad = await browser.newPage({ viewport: { width: 820, height: 1180 } });
-  await ipad.goto(BASE + "/approve", { waitUntil: "load" });
+  await ipad.goto(ui("/approve"), { waitUntil: "load" });
   await sleep(2500);
   await ipad.screenshot({ path: `${SHOTS}/ipad-approve.png` });
   await ipad.getByRole("button", { name: "承認して適用へ" }).click();
