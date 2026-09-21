@@ -169,6 +169,8 @@ PDF未選択の場合は従来の組み込み構成図を使います。
 - 解析結果を案件の証拠と判断入力に引き継ぎます。リセット後も同じ画面内の選択は保持され、再推論せず利用できます。画面を再読込した場合は再選択してください。
 - APIキーはルートまたは`backend/.env`の`ORCAROUTER_API_KEY`（互換名`ORCA_API_KEY`）から読み込みます。キーはレスポンスに含みません。
 - PDF再生成: ReportLabを導入したPythonで `python backend/scripts/gen_demo_pdf.py`。
-- 回帰確認: `cd backend && python -m unittest test_demo_reset test_topology_documents -v`。
+- 回帰確認: `cd backend && uv run python -m unittest test_demo_reset test_topology_documents -v`。
+- 攻撃PDF（プロンプトインジェクション検証用）の生成: `uv run --with reportlab python backend/scripts/gen_demo_pdf.py --attack`
 
-実接続確認では `gpt-4o-mini-2024-07-18` による5機器・5接続の抽出と登録構成の一致を確認しました。
+実接続確認では `gpt-4o-mini-2024-07-18` による5機器・5接続の抽出と登録構成の一致を確認しました
+（命令文を埋め込んだ攻撃PDFでも抽出結果は正しいまま — [T-11.md](docs/evidence/T-11.md)）。
