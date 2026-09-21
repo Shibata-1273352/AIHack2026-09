@@ -124,7 +124,12 @@ cp backend/.env.example backend/.env
 リハーサル自動確認: `cd frontend && node scripts/rehearsal.mjs`
 （FHD/4K 両解像度で全フェーズを撮影し、横方向のはみ出しを検証。小さい画面では縦スクロール可。要 `npm install`）
 
-回帰テスト一式: `cd backend && uv run python -m unittest test_demo_reset test_topology_documents test_send_gate test_approval -v`（22件）
+回帰テスト一式（38件）:
+
+```bash
+cd backend && uv run python -m unittest test_demo_reset test_topology_documents \
+  test_send_gate test_approval test_model_select test_handoff -v
+```
 
 ## シナリオ別の確認状況
 
@@ -141,6 +146,8 @@ cp backend/.env.example backend/.env
 | 外部送信不可データのLLM送信 (T-13/T-19) | プロバイダ呼出前に遮断 | 自動テスト: `backend/test_send_gate.py`（4件） |
 | 構成図PDFの不正入力（暗号化・ページ超過・スキーマ不一致） | 解析失敗を明示し調査開始を拒否 | 自動テスト: `backend/test_topology_documents.py`（5件） |
 | 処理中のリセット・注入・旧案件への承認 | 409 で拒否・履歴は保持 | 自動テスト: `backend/test_demo_reset.py`（4件） |
+| 未検証モデルの指定・処理中の切替・無認証切替 | 422 / 409 / 403 で拒否。上書きは永続化しない | 自動テスト: `backend/test_model_select.py`（8件） |
+| 却下からの復帰（M-12 / §14.3） | 引き継ぎ起票・受領/保留の記録・障害を入れ直さず再調査 | 自動テスト: `backend/test_handoff.py`（8件） |
 | 障害なし (T-01) | 業務正常を確認し、変更を提案しない | 手動確認 |
 | A単独 (T-02) | 冗長化制御で業務継続。主回線断を残存課題として報告 | 手動確認 |
 | B単独 (T-03) | 主回線利用中は業務正常（潜在障害） | 手動確認 |

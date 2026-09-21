@@ -121,8 +121,9 @@ R は最安だが、想定済みの障害しか扱えない（判断が決定木
 | 構成図の読取が表記ゆれで壊れない | `vlm.py` `_map_label` | 複数行ラベルでも行単位で照合し、曖昧なら確認待ちのまま |
 
 **実測**:
-- 自動テスト **22本** green（`test_approval` 9 / `test_topology_documents` 5 /
-  `test_demo_reset` 4 / `test_send_gate` 4）
+- 自動テスト **38本** green（`test_approval` 9 / `test_model_select` 8 /
+  `test_handoff` 8 / `test_topology_documents` 5 / `test_demo_reset` 4 /
+  `test_send_gate` 4）
 - A/B/R **9試行すべて SERVICE_RESTORED**、NEEDS_HUMAN率 0%
 - golden 再生のみ（`NW_ROUTE_MODE=mock`）で llm デモが完走。12呼出すべて記録応答・費用$0
 
@@ -201,9 +202,9 @@ T-21（再起動後の状態照合）未実装 / CI 未導入 / `check_plan` の
 ./demo.sh                      # sim + backend 起動（トークン付きURLを表示）
 cd backend
 
-# 自動テスト 22本
-uv run python -m unittest test_demo_reset test_topology_documents \
-                          test_send_gate test_approval -v
+# 自動テスト 38本
+uv run python -m unittest test_demo_reset test_topology_documents test_send_gate \
+                          test_approval test_model_select test_handoff -v
 
 # A/B/B'/R 比較の再実測（要APIキー。--variants R なら安価）
 uv run python scripts/eval_abr.py --trials 2 --conditions T04,C0,C1

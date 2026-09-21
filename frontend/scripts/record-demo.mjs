@@ -60,7 +60,14 @@ const statusIs = (...sts) => async () => {
 mkdirSync(OUT_DIR, { recursive: true });
 
 console.log("== 収録の準備: 環境をリセット ==");
-await api("/api/demo/reset", {});
+// 直前の案件の後処理が残っていると 409 になるので少しだけ待つ
+for (let i = 0; i < 15; i++) {
+  try { await api("/api/demo/reset", {}); break; }
+  catch (e) {
+    if (i === 14 || !String(e.message).includes("409")) throw e;
+    await sleep(2000);
+  }
+}
 await waitFor("正常状態に戻った", async () => {
   const gt = await api("/api/demo/ground_truth");
   return gt.business && !gt.fault_a_active && !gt.fault_b_active;
