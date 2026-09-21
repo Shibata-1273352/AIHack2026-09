@@ -15,6 +15,39 @@ AIエージェントが**実通信を伴う擬似ネットワーク**を調査�
   / [ゲートウェイ側の記録](docs/evidence/orcarouter-guardrails.md)
 - **要件定義書**: [docs/requirements/NetWalker.md](docs/requirements/NetWalker.md)
 
+## 提出用記事（Zenn）
+
+`articles/` に Zenn CLI 準拠の記事を3本置いている（`published: false` のまま）。
+
+| ファイル | 役割 |
+|---|---|
+| `articles/netwalker-aihack2026.md` | **本編**（提出用）。全体像・デモ・審査5項目・実測値 |
+| `articles/netwalker-architecture.md` | アーキテクチャ編（本編からリンク） |
+| `articles/netwalker-security.md` | セキュリティ編（本編からリンク） |
+
+公開前に、記事間リンクとリポジトリURLのプレースホルダを置換すること。
+
+```bash
+# Zenn のユーザー名（または Publication 名）と GitHub の owner/repo に置換する
+sed -i '' 's/ZENN_USERNAME/<あなたのZennユーザー名>/g; s|GITHUB_OWNER/GITHUB_REPO|<owner>/<repo>|g' articles/*.md
+# 内容を確認してから published: true にする
+```
+
+プレビュー: `npx zenn-cli@latest preview`（リポジトリ直下で実行）
+
+## デモ動画（ライブの予備）
+
+```bash
+./demo.sh                                  # 表示された token を控える
+cd frontend
+APPROVAL_TOKEN=<token> node scripts/record-demo.mjs
+# → docs/media/netwalker-demo.mp4（ffmpeg があれば）/ .webm
+```
+
+実UI・実シミュレータ・実モデルで通し実演を1920×1080で録画する（無音）。
+[demo-script.md](docs/demo-script.md) の4分版の配分に合わせ、各場面で読む時間を取っている。
+動画ファイルは `.gitignore` 対象（リポジトリを重くしないため）。
+
 ## 構成
 
 ```
