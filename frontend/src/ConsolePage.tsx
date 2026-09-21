@@ -11,6 +11,9 @@ import { FailoverTimeline, FailoverNote } from "./components/FailoverTimeline";
 import { InvestigationLog } from "./components/InvestigationLog";
 import { CloneCheck } from "./components/CloneCheck";
 import { readSourceLabel } from "./components/Plain";
+import { ModelSelect } from "./components/ModelSelect";
+import { DefenseLayers } from "./components/DefenseLayers";
+import { ModelRunsCard } from "./components/ModelRuns";
 
 const RUNNING = ["RECEIVED", "INVESTIGATING", "VALIDATING_PLAN", "APPLYING", "VERIFYING", "ROLLING_BACK"];
 const STEPS = ["申告", "原因を探す", "安全に検証", "人が承認", "業務復旧"];
@@ -91,6 +94,7 @@ export default function ConsolePage() {
     <header className="demo-header">
       <a className="demo-brand" href="/console"><span className="brand-symbol">N</span>NetWalker<span className="brand-caption">ネットワーク復旧エージェント</span></a>
       <div className="demo-actions">
+        <ModelSelect running={running} />
         <span className={`connection ${connected ? "online" : ""}`}>{connected ? "● 接続中" : "○ 再接続中"}</span>
         <button className="btn-outline" onClick={() => setDetails(true)}>技術詳細</button>
         <button className="btn-outline reset-button" disabled={!!busy || running || documentBusy || !connected}
@@ -151,7 +155,7 @@ export default function ConsolePage() {
         <span>調査 → 複製環境で検証 → 人が承認 → 復旧確認</span>
       </footer>
     </main>
-    {details && <div className="modal-backdrop"><section className="detail-modal" role="dialog" aria-modal="true" aria-label="技術詳細"><div className="detail-heading"><h2>証拠と実行記録</h2><button autoFocus className="btn-outline" onClick={() => setDetails(false)}>閉じる</button></div><div className="detail-grid"><PhaseStage key={inc?.id ?? "empty"} bundle={bundle} onStart={start}/><EvidenceFeed evidence={bundle.evidence}/></div><TimelineCard bundle={bundle}/></section></div>}
+    {details && <div className="modal-backdrop"><section className="detail-modal" role="dialog" aria-modal="true" aria-label="技術詳細"><div className="detail-heading"><h2>証拠と実行記録</h2><button autoFocus className="btn-outline" onClick={() => setDetails(false)}>閉じる</button></div><div className="detail-grid"><PhaseStage key={inc?.id ?? "empty"} bundle={bundle} onStart={start}/><EvidenceFeed evidence={bundle.evidence}/></div><TimelineCard bundle={bundle}/><div className="detail-grid" style={{marginTop:20}}><DefenseLayers bundle={bundle}/><ModelRunsCard bundle={bundle}/></div></section></div>}
     {confirmReset && <div className="modal-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="reset-title" className="reset-dialog"><span className="eyebrow">次のデモの準備</span><h2 id="reset-title">環境を初期状態に戻しますか？</h2><p>障害を解除して案件表示をクリアします。過去の証拠・実行履歴は保存されます。承認待ちの計画は適用できなくなります。</p><div><button autoFocus className="btn-outline" onClick={() => setConfirmReset(false)}>キャンセル</button><button className="btn-primary" disabled={!!busy || running} onClick={reset}>リセットする</button></div></section></div>}
   </div>;
 }

@@ -331,6 +331,64 @@ def demo_failover() -> dict[str, Any]:
         return {"history": [], "error": str(exc)}
 
 
+# ---------------------------------------------------------------- モデル選択（S8-5）
+
+@app.get("/api/models")
+def list_models() -> dict[str, Any]:
+    """画面から選べるモデル（構造化出力に対応と検証済みのものだけ）。
+
+    単価はサーバ側の値を返す。フロントにモデル名も単価もハードコードしない（M-17）。
+    """
+    from .llm.route_policy import policy
+    replay = settings.nw_route_mode == "mock" or not settings.has_api_key
+    return {
+        "options": policy.selectable_models(),
+        "current": policy.current_override(),
+        "default": policy.resolve("decide").routes[0],
+        "variant": policy.variant,
+        "policy_version": policy.version,
+        # 処理中は切り替えられない（走っている推論の方式を途中で変えない）
+        "locked": bool(runtime.workers),
+        # 録画再生中は選択しても実際には呼ばれない。詐称しないため明示する
+        "replay": replay,
+        "budget_per_incident_usd": policy.budget_per_incident_usd,
+    }
+
+
+class SelectModelReq(BaseModel):
+    model: str | None = None   # null で「設定どおり（自動）」へ戻す
+
+
+@app.post("/api/models/select")
+def select_model(req: SelectModelReq, request: Request) -> dict[str, Any]:
+    """decide プロファイルの候補列をメモリ上で差し替える（永続化しない）。
+
+    安全策:
+    - 処理中は 409（走っている調査の方式を途中で変えない）
+    - 料金表／検証済みリストに無いモデルは 422（400 は再試行不可で即死するため、
+      構造化出力に非対応のモデルは**選ばせない**）
+    - A/B/R 比較は別プロセスで起動するので、この上書きは実測値に混入しない（§12.2）
+    """
+    require_token(request)
+    from .llm.route_policy import policy
+    with runtime.lock:
+        if runtime.workers:
+            raise HTTPException(409, "調査・適用の処理中です。完了してから切り替えてください")
+        if req.model is not None:
+            if not policy.is_selectable(req.model):
+                raise HTTPException(
+                    422, "そのモデルは選べません（構造化出力の検証が済んだモデルのみ選択できます）")
+        policy.set_override(req.model)
+        replay = settings.nw_route_mode == "mock" or not settings.has_api_key
+        return {
+            "current": policy.current_override(),
+            "applies_to": "次に開始する案件から適用されます",
+            "replay": replay,
+            "note": ("録画再生モードのため、選択したモデルは実際には呼ばれません"
+                     if replay else ""),
+        }
+
+
 @app.get("/api/config")
 def get_config() -> dict[str, Any]:
     sim = scenario.sim_health()

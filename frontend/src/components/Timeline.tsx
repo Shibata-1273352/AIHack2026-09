@@ -21,12 +21,17 @@ const KIND_LABEL: Record<string, string> = {
 function KpiChips({ bundle }: { bundle: Bundle }) {
   const runs = bundle.model_runs.filter(r => r.resolved_model && !["mock", "fallback_to_mock"].includes(r.outcome));
   const tokens = runs.reduce((a, r) => a + (r.input_tokens ?? 0) + (r.output_tokens ?? 0), 0);
-  const cost = runs.reduce((a, r) => a + (r.cost_usd ?? 0), 0);
+  // 費用は実請求額（OrcaRouter GET /v1/generation）を優先し、未確定なら推定と明示する
+  const actualRuns = runs.filter(r => r.actual_cost_usd != null);
+  const allActual = runs.length > 0 && actualRuns.length === runs.length;
+  const cost = allActual
+    ? actualRuns.reduce((a, r) => a + (r.actual_cost_usd ?? 0), 0)
+    : runs.reduce((a, r) => a + (r.actual_cost_usd ?? r.cost_usd ?? 0), 0);
   const elapsed = useElapsed(bundle.incident);
   const items = [
     `AI ${runs.length}回`,
     `tok ${tokens.toLocaleString()}`,
-    `$${cost.toFixed(4)}`,
+    `$${cost.toFixed(5)}${allActual ? " 実費" : runs.length ? " 推定" : ""}`,
     `tool ${bundle.evidence.length}回`,
     `経過 ${elapsed}`,
   ];

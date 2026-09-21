@@ -29,6 +29,18 @@ export interface Incident {
   allowed_scope: string;
   business_status: "unknown" | "ok" | "down";
   started_ms: number;
+  /** この案件で実際に使われたモデルと、その出所（A/B/R の監査証跡） */
+  model_selection?: {
+    requested: string | null;
+    resolved: string | null;
+    router: string | null;
+    strategy: string | null;
+    fallback_level: number | null;
+    source: "policy" | "override" | string;
+    variant: string;
+    replay: boolean;
+    recorded_model?: string | null;
+  };
 }
 
 export interface Evidence {
@@ -95,8 +107,53 @@ export interface ModelRun {
   key: string; profile: string; route: string | null;
   resolved_model: string | null;
   input_tokens: number | null; output_tokens: number | null;
-  cost_usd: number | null; latency_ms: number | null;
+  /** 単価表からの推定（呼出前の予算判定に使う値） */
+  cost_usd: number | null;
+  budget_cost_usd?: number | null;
+  /** OrcaRouter GET /v1/generation の確定請求額。null は「未確定」 */
+  actual_cost_usd?: number | null;
+  cost_source?: string | null;
+  latency_ms: number | null;
+  actual_latency_ms?: number | null;
+  ttft_ms?: number | null;
   outcome: string; error: string | null;
+  /** ルーティング判断（X-Orca-* 由来） */
+  router?: string | null;
+  strategy?: string | null;
+  fallback_level?: number | null;
+  request_id?: string | null;
+}
+
+/** 1回の判断で「どのモデルがなぜ選ばれたか」（調査ログに1行として出す） */
+export interface RouteNote {
+  replay: boolean;
+  text: string;
+  router?: string | null;
+  strategy?: string | null;
+  resolved_model?: string | null;
+  fallback_level?: number | null;
+  recorded_model?: string | null;
+}
+
+export interface ModelOption {
+  model: string;
+  display: string;
+  note: string;
+  vision: boolean;
+  verified_at: string | null;
+  pricing: { prompt_per_million: number; completion_per_million: number } | null;
+  named_router: boolean;
+}
+
+export interface ModelsResponse {
+  options: ModelOption[];
+  current: string | null;
+  default: string;
+  variant: string;
+  policy_version: string;
+  locked: boolean;
+  replay: boolean;
+  budget_per_incident_usd: number;
 }
 
 export interface AgentStep {
@@ -105,6 +162,8 @@ export interface AgentStep {
   title: string; detail: string;
   /** 技術層（技術詳細モーダル側。null なら平易層へフォールバック） */
   tech_title?: string | null; tech_detail?: string | null;
+  /** その判断で使われたモデルとその選ばれ方 */
+  route?: RouteNote | null;
 }
 
 // 引き継ぎレコード（M-12 / §14.3）。却下を起点に起票され、受領・保留が記録される。

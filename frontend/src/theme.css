@@ -407,6 +407,45 @@ a:hover { color: var(--blue-hover); }
 .log-row[role="button"]:hover { background:#e5edfc; }
 .log-more { padding:2px 4px; }
 .log-more-btn { border:0; background:none; font:inherit; font-size:12px; color:var(--blue); cursor:pointer; padding:0; }
+.log-route { display:block; font-size:11.5px; color:var(--blue); margin-top:2px; font-weight:600; }
+.log-row.done .log-route { color:#9aa8bb; font-weight:400; }
+
+/* ---------------- モデル選択（S8-5） ---------------- */
+.model-select { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.model-select label { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); }
+.model-select label > span { white-space:nowrap; font-weight:600; }
+.model-select select {
+  font:inherit; font-size:12.5px; padding:7px 9px; border-radius:8px;
+  border:1px solid var(--border-input); background:#fff; color:var(--ink);
+  max-width:300px; min-width:0;
+}
+.model-select select:disabled { background:#f2f4f7; color:#8a94a0; }
+.model-select-note { font-size:11px; color:var(--text-faint); max-width:320px; line-height:1.4; }
+.model-select-note .err { color:var(--red); }
+
+/* ---------------- 多層防御・AI呼出明細（技術詳細モーダル） ---------------- */
+.defense-layers, .model-runs { max-height:60vh; overflow-y:auto; }
+.defense-row { display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--border-divider); }
+.defense-n { font-family:var(--mono); font-size:12px; color:var(--text-muted); }
+.defense-name { display:block; font-size:12.5px; font-weight:600; }
+.defense-detail { display:block; font-size:11.5px; color:var(--text-muted); margin-top:2px; line-height:1.5; }
+.defense-who { font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+.defense-who.gw { background:var(--bg-chip-blue); color:var(--blue); }
+.defense-who.app { background:var(--bg-green-tint); color:var(--green); }
+.defense-who.human { background:var(--bg-amber-tint); color:var(--amber); }
+.defense-note { font-size:11.5px; line-height:1.7; color:var(--text-muted); margin:6px 0 0; }
+
+.mrun-row { display:grid; grid-template-columns:86px minmax(0,1.4fr) 88px 66px 96px 92px; gap:8px; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border-divider); font-size:11.5px; }
+.mrun-key { font-family:var(--mono); color:var(--text-muted); }
+.mrun-route b { font-size:11.5px; }
+.mrun-route small, .mrun-cost small { color:var(--text-faint); font-size:10.5px; }
+.mrun-tok, .mrun-lat { font-family:var(--mono); color:var(--text-muted); }
+.mrun-cost { font-family:var(--mono); }
+.mrun-outcome { font-size:10.5px; font-weight:600; color:var(--text-muted); overflow-wrap:anywhere; }
+.mrun-outcome.ok, .mrun-outcome.ok_after_fallback { color:var(--green); }
+.mrun-outcome.guardrail_blocked, .mrun-outcome.send_policy_violation, .mrun-outcome.error, .mrun-outcome.schema_violation { color:var(--red); }
+.mrun-outcome.mock, .mrun-outcome.fallback_to_mock { color:var(--amber); }
+.model-runs code { font-family:var(--mono); font-size:11px; }
 
 /* ---------------- 複製環境の確認（S6） ---------------- */
 .clone-check { display:flex; flex-direction:column; gap:8px; font-size:13.5px; }

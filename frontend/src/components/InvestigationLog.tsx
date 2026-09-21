@@ -71,6 +71,8 @@ export function InvestigationLog({ steps, evidence, onOpenDetails }: {
               <span className="log-body">
                 <span className="log-title">{s.title}</span>
                 {latest && s.detail && <span className="log-detail">{s.detail}</span>}
+                {/* 判断ごとに違うモデルが選ばれる様子＝モデル選択の価値の直接的な証拠 */}
+                {s.route?.text && <span className="log-route">{s.route.text}</span>}
               </span>
               {n > 0 && <small className="log-count">証拠 {n}件</small>}
             </li>

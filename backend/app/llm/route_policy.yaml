@@ -1,35 +1,44 @@
-# NetWalker route policy（設定で監査可能にする。モデル名をコードへ直書きしない）
+# NetWalker route policy（設定で監査可能にする。モデル名をコードへ直書きしない、M-17）
 #
 # ⚠ Anthropic は response_format（json_schema）非対応のため、構造化出力が必要な
 # decide / vlm の候補列に入れない（tsumugi プロジェクトでの実測知見）。
 # ⚠ OrcaRouter の宣言的 fallback（extra_body.models 等）はこのデプロイでは
-# 無効と実測済み。候補列はクライアント側で順に試す。
+# 無効と実測済み。自前の候補列はクライアント側で順に試す。
+# ✅ Named Router（orcarouter/auto）は構造化出力に対応（2026-09-21 実測）。
+#    製品側が戦略つきでモデルを選ぶため、方式Bの本命をこちらに置く。
 
-version: netwalker-v1
+version: netwalker-v2
 
+# 候補列は backend/scripts/bench_models.py の実タスク検証に合格したものだけ。
+# 実測結果は docs/evaluation/models.md（2026-09-22）。
+# ⚠ 単価が最安の z-ai/glm-5.3-flash は decide/vlm とも**構造化出力に不合格**だった。
+#    「安い＝良い」ではないので、価格ではなく実タスクの合否で選ぶ。
 profiles:
   decide:
     description: 観測履歴 → 次の行動選択（構造化出力）
     max_cost_usd: 0.03
-    timeout_seconds: 25
+    timeout_seconds: 60
     temperature: 0
     response_format: json_schema
     strict: true
+    # 第一候補は製品のルーティング（方式B本命）。落ちたら検証済みの固定モデルへ降りる
     routes:
+      - orcarouter/fusion-flash
+      - openai/gpt-5.4-nano
       - openai/gpt-4o-mini
-      - google/gemini-2.5-flash
-      - openai/gpt-5
 
   vlm:
     description: 構成図PNG → ノード/リンクのグラフJSON（vision + 構造化出力）
     max_cost_usd: 0.05
-    timeout_seconds: 40
+    timeout_seconds: 90
     temperature: 0
     response_format: json_schema
     strict: true
+    # ⚠ 旧設定の第一候補 openai/gpt-4o-mini は接続を 5本中 4本しか読めなかった（実測）
     routes:
-      - openai/gpt-4o-mini
-      - google/gemini-2.5-flash
+      - orcarouter/fusion-flash
+      - openai/gpt-5.4-nano
+      - google/gemini-3.8-flash
 
   summarize:
     description: 観測ログの短い要約（安価モデル）
@@ -39,14 +48,14 @@ profiles:
     response_format: none
     strict: false
     routes:
-      - openai/gpt-4o-mini
-      - google/gemini-2.5-flash
+      - openai/gpt-5.4-nano
 
 # ---------------------------------------------------------------- 比較評価（M-17/M-19, §13.1）
 # NW_ROUTE_VARIANT で方式を切り替え、コストパフォーマンスを実測比較する。
-#   a … 高性能モデル固定（全工程を最上位モデルで実行）
-#   b … 段階別選択（既定。安価モデルから始め、必要時のみ上位へ）
-#   r … 固定ランブック（LLM不使用。NW_AGENT_MODE=scripted で実行）
+#   a  … 高性能モデル固定（全工程を最上位モデルで実行）
+#   b  … 製品のルーティングに委ねる（既定。上の profiles をそのまま使う）
+#   bs … 自前フォールバック（Named Router を使わず候補列を自分で回す＝方式B'）
+#   r  … 固定ランブック（LLM不使用。NW_AGENT_MODE=scripted で実行）
 # 各方式の実測結果は docs/evaluation/results.md を参照。
 variants:
   a:
@@ -59,13 +68,96 @@ variants:
       summarize:
         routes: [openai/gpt-5]
   b:
-    description: 段階別選択（既定。上の profiles をそのまま使う）
+    description: 製品のルーティング（OrcaRouter Named Router）。上の profiles をそのまま使う
     profiles: {}
+  bs:
+    description: 自前フォールバック（方式B'）。Named Router を外し候補列を自分で回す
+    profiles:
+      decide:
+        routes: [openai/gpt-5.4-nano, openai/gpt-4o-mini]
+      vlm:
+        routes: [openai/gpt-5.4-nano, google/gemini-3.8-flash]
 
-# モデル単価（USD / 100万トークン）。OrcaRouter は原価を返さないため
-# トークン数×単価で算出する。単価不明のモデルは null のまま（0 と偽らない）。
-# 出所: OrcaRouter GET /v1/models の pricing（tsumugi 2026-08-13 取得）。
+# ---------------------------------------------------------------- 画面から選べるモデル（S8-5）
+# UI の選択肢はここから作る（モデル名をコードに書かない方針を維持）。
+# json_schema 非対応のモデルを選ばせると 400 で即死するため、必ず実タスクで
+# 検証してから true にする（backend/scripts/bench_models.py・docs/evaluation/models.md）。
+capabilities:
+  orcarouter/fusion-flash:
+    display: 自動（OrcaRouterが選ぶ）
+    note: 判断ごとに最適なモデルを製品側が選びます。今回いちばん安く合格しました
+    json_schema: true
+    vision: true
+    verified_at: "2026-09-22"
+  orcarouter/auto:
+    display: 自動（バランス重視）
+    note: 製品が戦略つきで選択。構成図の読取だけは不合格でした
+    json_schema: true
+    vision: false
+    verified_at: "2026-09-22"
+  orcarouter/fusion-mini:
+    display: 自動（小型重視）
+    note: 合格しますが判断に時間がかかります
+    json_schema: true
+    vision: true
+    verified_at: "2026-09-22"
+  openai/gpt-5.4-nano:
+    display: 小型の固定モデル（最速）
+    note: 判断が最も速く、構成図も正しく読めました
+    json_schema: true
+    vision: true
+    verified_at: "2026-09-22"
+  openai/gpt-4o-mini:
+    display: 従来の固定モデル
+    note: 判断は合格。構成図は接続を5本中4本しか読めませんでした
+    json_schema: true
+    vision: false
+    verified_at: "2026-09-22"
+  qwen/qwen3.8-flash:
+    display: 大容量の固定モデル
+    note: 判断は合格。構成図の読取は不合格でした
+    json_schema: true
+    vision: false
+    verified_at: "2026-09-22"
+  openai/gpt-5:
+    display: 高性能の固定モデル
+    note: 比較基準（方式A）。合格しますが最も高価です
+    json_schema: true
+    vision: true
+    verified_at: "2026-09-22"
+
+# モデル単価（USD / 100万トークン）。出所: OrcaRouter GET /v1/models の pricing
+# （2026-09-21 取得）。**表示・評価に使うのは GET /v1/generation の実請求額**で、
+# ここは「呼出前の予算判定」に使う推定値。単価不明のモデルは null のまま（0 と偽らない）。
 pricing:
+  # Named Router が実際に解決した先（fusion-flash → これらを判断ごとに選ぶ）
+  openai/gpt-oss-120b:
+    prompt_per_million: 0.03
+    completion_per_million: 0.17
+  qwen/qwen3.7-flash:
+    prompt_per_million: 0.03
+    completion_per_million: 0.13
+  z-ai/glm-5.3-flash:      # 最安だが構造化出力に不合格（候補列には入れない）
+    prompt_per_million: 0.075
+    completion_per_million: 0.25
+  qwen/qwen3.8-flash:
+    prompt_per_million: 0.15
+    completion_per_million: 0.47
+  qwen/qwen3.7-plus:
+    prompt_per_million: 0.35
+    completion_per_million: 1.42
+  deepseek/deepseek-v4.1-flash:
+    prompt_per_million: 0.15
+    completion_per_million: 0.60
+  openai/gpt-5.4-nano:
+    prompt_per_million: 0.20
+    completion_per_million: 1.25
+  minimax/minimax-m3:
+    prompt_per_million: 0.30
+    completion_per_million: 1.20
+  google/gemini-3.8-flash:
+    prompt_per_million: 0.75
+    completion_per_million: 3.75
   openai/gpt-4o-mini:
     prompt_per_million: 0.15
     completion_per_million: 0.60
@@ -75,6 +167,13 @@ pricing:
   openai/gpt-5:
     prompt_per_million: 1.25
     completion_per_million: 10.00
+
+# Named Router（orcarouter/*）と無料枠は単価が公開されない。単価不明を
+# 「0円」として扱うと**費用上限が無限になる**ため、上限判定には保守的な
+# 上振れ単価を使う（実請求額が出たら必ずそちらで上書きする）。
+unknown_model_pricing:
+  prompt_per_million: 1.25
+  completion_per_million: 10.00
 
 # 費用上限（N-04: 超過前に新規呼出を止める）
 #   per_incident_usd … 案件あたり（調査〜復旧の判断呼出）

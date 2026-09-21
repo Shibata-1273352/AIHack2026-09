@@ -22,12 +22,14 @@ from . import db, events, incident, otel, vlm, wording
 from .approval import create_request, plan_hash
 from .config import settings
 from .llm.gateway import BudgetExceeded, gateway
+from .llm.orcarouter import GuardrailBlocked
 from .tools import ToolBelt, ToolLimitExceeded
 
 
 def publish_step(incident_id: str, title: str, detail: str = "", *,
                  tech_title: str | None = None,
-                 tech_detail: str | None = None) -> dict[str, Any]:
+                 tech_detail: str | None = None,
+                 route: dict[str, Any] | None = None) -> dict[str, Any]:
     """調査ログの1行（二層テキスト）。
 
     `title`/`detail` が画面に出る平易層、`tech_*` が技術詳細モーダル側の技術層。
@@ -39,6 +41,8 @@ def publish_step(incident_id: str, title: str, detail: str = "", *,
     step = db.add_record(incident_id, "step", {
         "title": title, "detail": detail,
         "tech_title": tech_title, "tech_detail": tech_detail,
+        # OrcaRouter のルーティング判断（判断ごとに違うモデルが選ばれる様子を出す）
+        "route": route,
     })
     events.publish("agent_step", {"incident_id": incident_id, "step": step})
     incident.set_activity(incident_id, title, tech_title or "")
@@ -92,6 +96,18 @@ def _run_investigation(incident_id: str) -> None:
             try:
                 _investigate_llm(incident_id, tools)
                 return
+            except GuardrailBlocked as exc:
+                # ゲートウェイの防御が発動＝設計どおりの動作。エラーではなく安全停止として見せる。
+                # scripted へフォールバックしない（遮断された内容を別経路で通さない）。
+                publish_step(
+                    incident_id, "ゲートウェイが送信内容を遮断しました",
+                    "AIには渡っていません。設計どおりの防御動作です",
+                    tech_title="guardrail_blocked（OrcaRouter Guardrails）",
+                    tech_detail=str(exc.detail.get("body", ""))[:400])
+                incident.transition(
+                    incident_id, "NEEDS_HUMAN", f"ガードレールにより送信を遮断: {exc}",
+                    activity="担当者の判断が必要です（ゲートウェイが送信内容を遮断しました。対象環境は変更していません）")
+                return
             except (BudgetExceeded, ToolLimitExceeded) as exc:
                 publish_step(incident_id, "決められた手順に切り替えます",
                              "あらかじめ決めた実行の上限に達したためです",
@@ -120,6 +136,15 @@ def _run_investigation(incident_id: str) -> None:
             activity="担当者の判断が必要です（調査を最後まで進められませんでした）")
     finally:
         tools.close()
+        _finalize_costs(incident_id)
+
+
+def _finalize_costs(incident_id: str) -> None:
+    """案件区切りで確定請求額（GET /v1/generation）を引く。失敗しても本筋を止めない。"""
+    try:
+        gateway.finalize_actual_costs(incident_id)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ================================================================ scripted 決定木
@@ -379,6 +404,46 @@ def _compose_and_validate_plan(incident_id: str, tools: ToolBelt,
                  tech_detail=f"plan {plan['id']}-v{plan['version']} hash={h[:8]} / 期限 {ap['expires_at']}")
 
 
+# ================================================================ モデル選択の記録（S8）
+
+def _route_note(resp: Any) -> dict[str, Any] | None:
+    """1回の判断で「どのモデルがなぜ選ばれたか」。画面のログに1行として流す。"""
+    if resp.outcome in ("mock", "fallback_to_mock"):
+        return {"replay": True,
+                "recorded_model": resp.extra.get("recorded_model") or resp.resolved_model,
+                "text": "録画再生（この判断で実際のモデルは呼ばれていません）"}
+    if not resp.resolved_model:
+        return None
+    if resp.router:
+        text = (f"OrcaRouter が {resp.strategy or '既定'} 戦略で "
+                f"{resp.resolved_model} を選択"
+                + (f"（fallback {resp.fallback_level}）" if resp.fallback_level is not None else ""))
+    else:
+        text = f"{resp.resolved_model} を使用（固定モデル）"
+    return {"replay": False, "router": resp.router, "strategy": resp.strategy,
+            "resolved_model": resp.resolved_model,
+            "fallback_level": resp.fallback_level, "text": text}
+
+
+def _record_model_selection(incident_id: str, resp: Any) -> None:
+    """この案件で実際に使われたモデルと、その出所を刻む（A/B/R の監査証跡）。"""
+    from .llm.route_policy import policy
+    prof = policy.resolve("decide")
+    replay = resp.outcome in ("mock", "fallback_to_mock")
+    incident.set_fields(incident_id, model_selection={
+        "requested": prof.routes[0] if prof.routes else None,
+        "resolved": resp.resolved_model,
+        "router": resp.router,
+        "strategy": resp.strategy,
+        "fallback_level": resp.fallback_level,
+        # policy = 設定どおり / override = 画面から選択された
+        "source": prof.source,
+        "variant": prof.variant,
+        "replay": replay,
+        "recorded_model": resp.extra.get("recorded_model"),
+    })
+
+
 # ================================================================ llm モード
 
 DECIDE_SCHEMA = {
@@ -475,6 +540,12 @@ def _investigate_llm(incident_id: str, tools: ToolBelt) -> None:
                             data_class="external_allowed")  # 観測サマリのみ送信（§8）
         if not resp.parsed or not resp.schema_ok:
             raise RuntimeError(f"構造化出力の取得に失敗 (outcome={resp.outcome})")
+        # 実際に使われたモデルは最初の判断の後に案件へ刻む（A/B/R の監査証跡）。
+        # gateway._record_run ではなくここに置く（DBに無い案件で gateway.call を
+        # 呼ぶ既存テストを壊さないため）。
+        if step_no == 1:
+            _record_model_selection(incident_id, resp)
+
         d = resp.parsed
         # 画面は「何をするのか」を平易に、技術層に生の action/ノードIDを残す
         if d["action"] == "observe_node":
@@ -489,7 +560,8 @@ def _investigate_llm(incident_id: str, tools: ToolBelt) -> None:
                      tech_detail=f"node={d['node'] or '-'} aspects={d['aspects']} "
                                  f"src={d['src'] or '-'} dst={d['dst'] or '-'} "
                                  f"kind={d['kind'] or '-'} port={d['port'] or '-'} "
-                                 f"rule_comment={d['rule_comment'] or '-'}")
+                                 f"rule_comment={d['rule_comment'] or '-'}",
+                     route=_route_note(resp))
         statement = (d.get("hypothesis_update") or "").strip()
         if statement:
             current_h = seen_hypotheses.get(statement)
@@ -748,6 +820,7 @@ def _apply_and_verify(incident_id: str, ap: dict[str, Any]) -> None:
             activity="担当者の判断が必要です（適用処理を最後まで完了できませんでした）")
     finally:
         tools.close()
+        _finalize_costs(incident_id)
 
 
 def _final_verify(incident_id: str, tools: ToolBelt, applied_change: bool,
