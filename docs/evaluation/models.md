@@ -30,5 +30,22 @@
 - decide（構造化出力）合格: `orcarouter/auto`, `orcarouter/fusion-flash`, `orcarouter/fusion-mini`, `qwen/qwen3.8-flash`, `openai/gpt-5.4-nano`, `openai/gpt-4o-mini`, `openai/gpt-5`
 - vlm（vision + 構造化出力）合格: `orcarouter/fusion-flash`, `orcarouter/fusion-mini`, `deepseek/deepseek-v4.1-flash`, `openai/gpt-5.4-nano`, `google/gemini-3.8-flash`, `openai/gpt-5`
 
-不合格のモデルは候補列にも選択UIにも載せない。構造化出力に非対応のモデルは
-400 を返し、400 は再試行不可なので調査がその場で落ちるため。
+不合格のモデルは候補列にも選択UIにも載せない。落ち方は2通りある。
+
+- **400 を返す**（`response_format` 非対応。`deepseek-v4.1-flash` / `gemini-3.8-flash` の decide）…
+  400 は再試行不可なので、候補に入れると調査がその場で落ちる
+- **200 を返すがスキーマに適合しない**（`z-ai/glm-5.3-flash` / `minimax-m3` など）…
+  応答は課金されるのに採用できない。単価が安くても無駄払いになる
+
+どちらも「単価表だけ見ていては分からない」ので、実タスクで確かめる必要がある。
+
+## この実測から採用を決めたこと
+
+| 判断 | 根拠 |
+|---|---|
+| **decide の第一候補を `orcarouter/fusion-flash` に** | 合格したなかで**最安**（$0.000076）。しかも判断と構成図読取で**別のモデルに解決される**（`gpt-oss-120b` / `qwen3.7-flash`）＝モデル選択の価値がそのまま見える |
+| **vlm の第一候補も `orcarouter/fusion-flash` に** | 旧設定の第一候補 `gpt-4o-mini` は**接続を5本中4本しか読めなかった**。しかも実費は33倍（$0.005690 対 $0.000174） |
+| **最安の `z-ai/glm-5.3-flash` は採用しない** | 単価は最安だが decide / vlm とも構造化出力に不合格。**安い＝良い、ではない** |
+| **`orcarouter/auto` は decide のみ選択可に** | 構成図読取だけ不合格だったため（画面の選択肢では `vision: false` として扱う） |
+| **無料枠は採用しない** | `orcarouter/free` / `*-free` はいずれも 429（レート制限）または 402 で完走できず。「実質0円で復旧まで到達」は**今回の実測では言えない** |
+| フォールバックは `openai/gpt-5.4-nano` | 合格モデル中**最速**（decide 2.5s）。Named Router が落ちたときの受け皿 |

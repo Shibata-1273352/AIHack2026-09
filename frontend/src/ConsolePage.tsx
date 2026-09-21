@@ -20,7 +20,7 @@ const STEPS = ["申告", "原因を探す", "安全に検証", "人が承認", "
 
 export default function ConsolePage() {
   const { bundle, connected, pulse, failover, refresh } = useBundle();
-  const { cfg } = useConfig();
+  const { cfg, refresh: refreshConfig } = useConfig();
   const inc = bundle.incident;
   const status = inc?.status;
   const elapsed = useElapsed(inc);
@@ -32,6 +32,9 @@ export default function ConsolePage() {
   const documentBusy = document?.status === "processing";
   const documentReady = !document || (document.status === "ready" && document.result?.comparison?.ok);
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [inc?.id, status]);
+  // 名前空間の数は複製環境の作成で実際に増える。工程が進むたびに取り直して、
+  // フッターのバッジが飾りでないことを見せる
+  useEffect(() => { refreshConfig(); }, [status]);
   const running = RUNNING.includes(status ?? "");
   const done = status === "SERVICE_RESTORED" || status === "RESOLVED";
   const waiting = status === "AWAITING_APPROVAL";
@@ -80,7 +83,7 @@ export default function ConsolePage() {
   // 他が飾りでないことの証明になる。
   const netns = cfg?.sim?.netns_count;
   const footChips: { text: string; tone?: "down" | "up" }[] = [
-    { text: netns ? `Linuxの名前空間 ${netns}個で動く実ネットワーク` : "実ネットワーク（隔離環境）" },
+    { text: netns ? `Linuxの名前空間 ${netns}個の実ネットワーク` : "実ネットワーク（隔離環境）" },
     { text: "本物のTLS通信" },
     { text: "telnetは待受中・ポリシーで遮断" },
   ];
