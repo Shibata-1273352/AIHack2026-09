@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 機密情報・環境変数ファイル
 .env
 
@@ -8,7 +7,7 @@ __pycache__/
 .venv/
 topology_result.json
 test_topology.pdf
-=======
+
 # 機微情報（絶対にコミットしない）
 **/.env
 **/.env.*
@@ -41,4 +40,3 @@ logs/
 Thumbs.db
 .idea/
 .vscode/
->>>>>>> 852a86f07a3347b1a459ac6cd086fac0e56a31d8

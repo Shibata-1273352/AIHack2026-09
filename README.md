@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 =======
 # NetWalker — 拠点ネットワーク障害の自律調査・承認付き復旧エージェント
 
@@ -108,4 +107,4 @@ cp backend/.env.example backend/.env
 - DGX Spark ローカルLLM（M-16）は未接続。VLM/判断は OrcaRouter または scripted
 - 実機・マルチベンダー機器（W-04）は対象外。netns + nftables による Linux 等価環境
 - 冗長化制御は自作の簡易デーモン（BGP/VRRP等の実装ではない）
->>>>>>> 852a86f07a3347b1a459ac6cd086fac0e56a31d8
+
