@@ -480,7 +480,7 @@ export function VerifyCard({ bundle }: { bundle: Bundle }) {
               </div>
               <div style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.55 }}>
                 受注業務は{inc.residual_issues.length > 0 ? "予備経路で" : ""}再開しました。状態は{" "}
-                <span style={{ fontFamily: "var(--mono)" }}>{inc.status}</span>。
+                <Term plain={inc.status_label} tech={inc.status} />。
                 {inc.residual_issues.length > 0 && "完全解決ではありません。"}
               </div>
             </div>

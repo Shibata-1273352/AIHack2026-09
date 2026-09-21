@@ -469,6 +469,9 @@ a:hover { color: var(--blue-hover); }
   background:var(--bg-faint); border-radius:6px; padding:8px; margin:4px 0 8px;
 }
 .clone-rulesets { display:grid; grid-template-columns:1fr; gap:6px; }
+/* iPad ベゼル枠（幅300px）の中では2列だと詰まるので縦積みにする */
+.slide-in .clone-grid { grid-template-columns:1fr; }
+.slide-in .rejected-exits .exits-buttons button { flex:1 1 100%; }
 
 /* ---------------- 却下後の出口（S5b） ---------------- */
 .rejected-exits { display:flex; flex-direction:column; gap:10px; font-size:14px; }

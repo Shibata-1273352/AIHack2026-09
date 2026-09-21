@@ -107,7 +107,10 @@ export default function ConsolePage() {
     </header>
     <main className="demo-main">
       <div className="demo-intro"><div><div className="eyebrow">拠点 A / 受注業務</div><h1>{heading}</h1>
-        <p className="demo-subtitle">{!inc ? "症状の申告から、調査・検証・承認・復旧までをひとつの案件で。" : latest?.title ?? inc.current_activity}</p></div>
+        {/* 担当者対応待ちのときは「止まった理由」を出す（最後の手順名では伝わらない） */}
+        <p className="demo-subtitle">{!inc ? "症状の申告から、調査・検証・承認・復旧までをひとつの案件で。"
+          : needsHuman ? inc.current_activity
+          : latest?.title ?? inc.current_activity}</p></div>
         <div className="mode-summary"><span>{mode}</span>{inc && <strong>{elapsed}<small>今回の処理時間</small></strong>}</div>
       </div>
       <ol className="demo-progress" aria-label="デモの進行">{STEPS.map((label, i) => <li key={label} className={i === step ? "active" : i < step ? "complete" : ""}><span>{i < step ? "✓" : `0${i + 1}`}</span>{label}</li>)}</ol>
@@ -144,7 +147,12 @@ export default function ConsolePage() {
           ? <section className="story-card"><span className="eyebrow">承認されませんでした</span><h2>ネットワークには何も変更していません</h2>
             <RejectedExits bundle={bundle} onReset={() => setConfirmReset(true)} />
           </section>
-          : <section className="story-card" aria-live="polite"><span className="eyebrow">{status === "VALIDATING_PLAN" ? "修正案の事前検証" : "調査の進行"}</span><h2>{latest?.title ?? "調査を開始しています"}</h2>
+          : <section className="story-card" aria-live="polite"><span className="eyebrow">{needsHuman ? "ここで止めました" : status === "VALIDATING_PLAN" ? "修正案の事前検証" : "調査の進行"}</span>
+            {/* 見出しは固定。いま何をしているかは上の一文とログの最新行が担う（重複を避ける） */}
+            <h2>{needsHuman ? inc.current_activity
+              : status === "VALIDATING_PLAN" ? "本番と同じ複製環境で試しています"
+              : "調べた順番がそのまま残ります"}</h2>
+            {needsHuman && <p>確かでないまま変更を進めるより、ここで人に渡すほうが安全だと判断しました。ここまでの証拠は案件に残っています。</p>}
             <InvestigationLog steps={bundle.steps} evidence={bundle.evidence} onOpenDetails={() => setDetails(true)} />
             {findings.map((h, i) => <div className="finding" key={h.id}><b>要因 {i + 1}</b><p>{(h.text_plain ?? h.text).replace(/^障害[A-Z]:\s*/, "")}</p><small>証拠 {h.evidence_ids.length}件</small></div>)}
             <CloneCheck plan={plan} compact />
