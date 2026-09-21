@@ -45,7 +45,7 @@ def pending_approval(incident_id: str) -> dict[str, Any] | None:
 
 
 def decide(incident_id: str, plan_id: str, plan_hash_from_client: str,
-           decision: str, approver: str) -> dict[str, Any]:
+           decision: str, approver: str, reason: str = "") -> dict[str, Any]:
     """iPad からの承認/却下。全条件をサーバ側で照合する（§10.4）。"""
     ap = pending_approval(incident_id)
     if ap is None:
@@ -67,6 +67,9 @@ def decide(incident_id: str, plan_id: str, plan_hash_from_client: str,
     ap["decision"] = "approved" if decision == "approve" else "rejected"
     ap["approver"] = approver.strip()
     ap["decided_at"] = db.now_iso()
+    # 却下理由は**人間向けの記録・表示のみ**。LLM の履歴には入れない
+    # （入れると推論の入力が変わり、golden と A/B/R 実測が無効化するため）。
+    ap["reason"] = (reason or "").strip()[:500]
     db.update_record(ap["id"], ap)
     events.publish("approval", {"incident_id": incident_id, "approval": ap})
 

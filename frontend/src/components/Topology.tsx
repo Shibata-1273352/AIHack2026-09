@@ -10,13 +10,34 @@ const C = { blue: "#1f5fbf", green: "#1f8a5b", red: "#c73a2b", gray: "#c3c9d1", 
 
 interface NodeDef { id: string; kind: string; label: string; sub: string; x: number; y: number }
 
+// 日本語主体＋小さな技術名。技術名（機器ID・IPアドレス）は消さず従属表示にする。
+// r1/r2 は技術IDのみを副題にする（説明は雲キャプション側に置き、段組の重なりを避ける）。
 const NODES: NodeDef[] = [
-  { id: "client", kind: "PC", label: "業務端末", sub: "10.0.1.10", x: 120, y: 190 },
-  { id: "gw", kind: "GW", label: "拠点GW", sub: "10.0.1.1", x: 270, y: 300 },
-  { id: "r1", kind: "RT", label: "経路ノード r1", sub: "主回線", x: 481, y: 150 },
-  { id: "r2", kind: "RT", label: "経路ノード r2", sub: "予備回線", x: 481, y: 385 },
-  { id: "srv", kind: "SRV", label: "受注サービス", sub: "10.0.100.10", x: 760, y: 260 },
+  { id: "client", kind: "PC", label: "業務端末", sub: "client · 10.0.1.10", x: 120, y: 190 },
+  { id: "gw", kind: "GW", label: "拠点ルータ", sub: "gw · 10.0.1.1", x: 270, y: 300 },
+  { id: "r1", kind: "RT", label: "主回線ルータ", sub: "r1", x: 481, y: 150 },
+  { id: "r2", kind: "RT", label: "予備回線ルータ", sub: "r2", x: 481, y: 385 },
+  { id: "srv", kind: "SRV", label: "受注サーバ", sub: "srv · 10.0.100.10", x: 760, y: 260 },
 ];
+
+/** 和欧混在のラベル幅の見積り（ラテン等幅前提の式だと日本語が見切れる）。 */
+function textWidth(text: string, size: number): number {
+  let w = 0;
+  for (const ch of text) w += /[\x20-\x7e]/.test(ch) ? size * 0.58 : size;
+  return w;
+}
+
+/** 浮遊チップに出すツール名の平易な言い換え（生のツール名は証拠フィード側にある）。 */
+const TOOL_PLAIN: Record<string, string> = {
+  observe_node: "機器の状態を確認",
+  probe_path: "経路を試験",
+  test_business: "業務通信を実測",
+  test_forbidden: "禁止通信を確認",
+  validate_plan: "複製環境で検証",
+  apply_plan: "承認された変更を適用",
+  rollback_plan: "適用前へ復元",
+  vlm_read_topology: "構成図を読み取り",
+};
 
 const LINKS: { id: string; a: string; b: string }[] = [
   { id: "client-gw", a: "client", b: "gw" },
@@ -114,28 +135,30 @@ function evidenceNode(e: Evidence): string | null {
   return null;
 }
 
+// バッジ・タグの文言は平易層。判定に使う label（node_status/link_status のラベル）は
+// 内部の突き合わせキーなので、そのまま残してよい（画面には出ない）。
 function badgeFor(status: string, label: string): { text: string; bg: string } | null {
-  if (label.includes("残存")) return { text: "残存課題", bg: C.amber };
+  if (label.includes("残存")) return { text: "残る課題", bg: C.amber };
   if (status === "bad") {
-    if (label.includes("ACL")) return { text: "ACL異常", bg: C.red };
-    if (label.includes("リンク")) return { text: "リンク断", bg: C.red };
+    if (label.includes("ACL")) return { text: "通信ルールの誤り", bg: C.red };
+    if (label.includes("リンク")) return { text: "回線が切れている", bg: C.red };
     return { text: "異常", bg: C.red };
   }
-  if (status === "fixed") return { text: "修正済", bg: C.green };
+  if (status === "fixed") return { text: "修正しました", bg: C.green };
   if (status === "ok" && label.includes("業務OK")) return { text: "業務OK", bg: C.green };
   return null;
 }
 
 function tagFor(status: string, label: string): { text: string; bg: string } | null {
-  if (status === "blocked") return { text: "443遮断", bg: C.red };
-  if (status === "down") return { text: "リンク断", bg: C.red };
-  if (status === "restored") return { text: "443許可", bg: C.green };
-  if (status === "active" && label.includes("予備")) return { text: "予備経路", bg: C.blue };
+  if (status === "blocked") return { text: "業務通信ブロック", bg: C.red };
+  if (status === "down") return { text: "回線が切れている", bg: C.red };
+  if (status === "restored") return { text: "業務通信OK", bg: C.green };
+  if (status === "active" && label.includes("予備")) return { text: "予備経路を使用中", bg: C.blue };
   return null;
 }
 
 function Badge({ text, bg, y = -46 }: { text: string; bg: string; y?: number }) {
-  const bw = text.length * 10.5 + 16;
+  const bw = textWidth(text, 10) + 18;
   return (
     <g transform={`translate(0,${y})`}>
       <rect x={-bw / 2} y="-10" width={bw} height="20" rx="10" fill={bg} filter="url(#nwsh)" />
@@ -206,7 +229,8 @@ export function Topology({ incident, note, pulse, evidence, style }: {
     if (fresh.length === 0) return;
     fresh.forEach((e) => seen.add(e.id));
     const added = fresh
-      .map((e) => ({ key: e.id, node: evidenceNode(e) as string, text: e.tool }))
+      .map((e) => ({ key: e.id, node: evidenceNode(e) as string,
+                     text: TOOL_PLAIN[e.tool] ?? e.tool }))
       .filter((c) => c.node);
     if (added.length === 0) return;
     setChips((cs) => [...cs, ...added]);
@@ -218,7 +242,7 @@ export function Topology({ incident, note, pulse, evidence, style }: {
   return (
     <section className="card" style={{ minWidth: 0, minHeight: 0, ...style }}>
       <div className="card-head">
-        <h2>構成図（構造化）</h2>
+        <h2>ネットワーク構成図</h2>
         <span style={{ fontSize: 11.5, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{note}</span>
         <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "var(--text-muted)" }}>
           {[["調査中", C.blue], ["確認済", C.green], ["異常", C.red], ["未確認", C.gray]].map(([t, c]) => (
@@ -254,23 +278,24 @@ export function Topology({ incident, note, pulse, evidence, style }: {
 
         <rect width="900" height="490" rx="14" fill="url(#nwdots)" />
 
-        {/* ゾーン */}
+        {/* ゾーン（CIDR は技術詳細側にあるので見出しからは外す） */}
         <rect x="22" y="26" width="318" height="440" rx="18" fill="url(#nwzone)" stroke="#e1e6ee" />
         <text x="40" y="52" fontSize="11" fontWeight="700" letterSpacing="1.5" fill="#5d6773">拠点A</text>
-        <text x="40" y="68" fontSize="10" fill="#8a94a0">東京・営業所 · 10.0.1.0/24</text>
+        <text x="40" y="68" fontSize="10" fill="#8a94a0">東京・営業所（利用者のいる場所）</text>
         <rect x="362" y="26" width="238" height="440" rx="18" fill="none" stroke="#dbe1ea" strokeDasharray="5 6" />
-        <text x="380" y="52" fontSize="11" fontWeight="700" letterSpacing="1.5" fill="#5d6773">WAN</text>
-        <text x="380" y="68" fontSize="10" fill="#8a94a0">回線事業者 · 冗長構成</text>
+        <text x="380" y="52" fontSize="11" fontWeight="700" letterSpacing="1.5" fill="#5d6773">回線区間</text>
+        <text x="380" y="68" fontSize="10" fill="#8a94a0">回線事業者の設備（2本立て）</text>
         <rect x="622" y="26" width="256" height="440" rx="18" fill="url(#nwzone)" stroke="#e1e6ee" />
         <text x="640" y="52" fontSize="11" fontWeight="700" letterSpacing="1.5" fill="#5d6773">データセンター</text>
-        <text x="640" y="68" fontSize="10" fill="#8a94a0">10.0.100.0/24</text>
+        <text x="640" y="68" fontSize="10" fill="#8a94a0">受注システムが動いている場所</text>
 
-        {/* 回線雲 */}
-        {[{ ty: 150, label: "主回線 · 専用線 100M" }, { ty: 385, label: "予備回線 · インターネットVPN" }].map((cl) => (
+        {/* 回線雲。キャプションは y=84（ノード副題 y=62 との重なりを避ける段組） */}
+        {[{ ty: 150, label: "主回線（ふだん使う経路）" },
+          { ty: 385, label: "予備回線（切替先の経路）" }].map((cl) => (
           <g key={cl.ty} transform={`translate(481,${cl.ty})`}>
             <path d="M -78 26 C -112 26 -112 -22 -74 -24 C -70 -58 -10 -66 10 -36 C 34 -60 92 -42 82 -6 C 112 0 106 36 70 34 Z"
               fill="#eef3fb" stroke="#c9d7f0" strokeDasharray="4 4" />
-            <text x="0" y="62" textAnchor="middle" fontSize="10" fill="#5d6773" fontWeight="600">{cl.label}</text>
+            <text x="0" y="84" textAnchor="middle" fontSize="10" fill="#5d6773" fontWeight="600">{cl.label}</text>
           </g>
         ))}
 
@@ -295,12 +320,16 @@ export function Topology({ incident, note, pulse, evidence, style }: {
                   <path d="M -4.5 -4.5 L 4.5 4.5 M 4.5 -4.5 L -4.5 4.5" stroke={C.red} strokeWidth="2.2" strokeLinecap="round" />
                 </g>
               )}
-              {tag && (
-                <g transform={`translate(${mx},${ty})`}>
-                  <rect x="-32" y="-10" width="64" height="20" rx="10" fill={tag.bg} filter="url(#nwsh)" />
-                  <text y="4" textAnchor="middle" fontSize="10" fontWeight="600" fill="#fff">{tag.text}</text>
-                </g>
-              )}
+              {tag && (() => {
+                // 幅は文字数式で求める（固定 width=64 だと日本語が見切れる）
+                const tw = textWidth(tag.text, 10) + 18;
+                return (
+                  <g transform={`translate(${mx},${ty})`}>
+                    <rect x={-tw / 2} y="-10" width={tw} height="20" rx="10" fill={tag.bg} filter="url(#nwsh)" />
+                    <text y="4" textAnchor="middle" fontSize="10" fontWeight="600" fill="#fff">{tag.text}</text>
+                  </g>
+                );
+              })()}
             </g>
           );
         })}
@@ -366,14 +395,14 @@ export function Topology({ incident, note, pulse, evidence, style }: {
         {chips.map((c, i) => {
           const n = nodeById[c.node];
           if (!n) return null;
-          const bw = c.text.length * 6.6 + 18;
+          const bw = textWidth(c.text, 10) + 20;
           return (
             <g key={c.key} className="fadein"
               transform={`translate(${n.x + 40},${n.y - 34 - (i % 3) * 22})`}>
               <rect x="0" y="-11" width={bw} height="22" rx="6"
                 fill="#0f1420" opacity=".88" filter="url(#nwsh)" />
               <text x={bw / 2} y="4" textAnchor="middle" fontSize="10"
-                fontFamily="'IBM Plex Mono',monospace" fill="#cfe3ff">{c.text}</text>
+                fill="#cfe3ff">{c.text}</text>
             </g>
           );
         })}
@@ -381,11 +410,13 @@ export function Topology({ incident, note, pulse, evidence, style }: {
       </div>
 
       <div style={{ borderTop: "1px solid var(--border-divider)", paddingTop: 10, fontSize: 11.5, color: "var(--text-muted)", display: "flex", gap: 14, flexWrap: "wrap" }}>
-        <span>ノード 5 · リンク 5</span>
-        <span>実測確認 {probedCount} / 5</span>
-        <span>図と実態の差：{diffCount > 0 ? `${diffCount}件` : "0"}</span>
+        <span>機器 5台 · 接続 5本</span>
+        <span>実測で確認 {probedCount} / 5</span>
+        <span>図と実態のズレ：{diffCount > 0 ? `${diffCount}件` : "0件"}</span>
         <span style={{ marginLeft: "auto" }}>
-          {pulse ? `現在の業務経路: client → gw → ${activePath} → srv · ${pulse.business_ok ? "疎通" : "不通"}` : "現在の業務経路：測定待ち"}
+          {pulse
+            ? `いま業務が通っている経路：業務端末 → 拠点ルータ → ${activePath === "r2" ? "予備回線" : "主回線"} → 受注サーバ（${pulse.business_ok ? "通じている" : "不通"}）`
+            : "いま業務が通っている経路：測定待ち"}
         </span>
       </div>
     </section>

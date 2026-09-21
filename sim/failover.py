@@ -97,6 +97,13 @@ def main() -> None:
         if not up:
             down_count += 1
             up_count = 0
+            if down_count == 1 and active == "r1":
+                # 検知の瞬間を履歴に残す（切替との差が「約3秒で自力復旧」の根拠になる）
+                history.append({"at": time.strftime("%H:%M:%S"),
+                                "event": "primary_link_down_detected",
+                                "reason": f"eth-r1 down を検知（{THRESHOLD}回連続で確定）"})
+                log("主回線リンク断を検知（連続確認中）")
+                save()
             if down_count == THRESHOLD and active == "r1":
                 switch_to(prefix, "r2")
                 active = "r2"

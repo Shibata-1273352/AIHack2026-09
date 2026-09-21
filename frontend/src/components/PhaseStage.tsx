@@ -12,7 +12,7 @@ import {
 type Tab = "vlm" | "hypo" | "plan" | "approval" | "apply" | "verify";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "vlm", label: "VLM" },
+  { key: "vlm", label: "構成図" },
   { key: "hypo", label: "仮説" },
   { key: "plan", label: "計画" },
   { key: "approval", label: "承認" },
@@ -21,7 +21,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 const TITLES: Record<Tab, string> = {
-  vlm: "構成理解（VLM照合）", hypo: "仮説と次の検査", plan: "根本原因と変更計画",
+  vlm: "構成理解（マルチモーダルAIの読取と照合）", hypo: "仮説と次の検査", plan: "根本原因と変更計画",
   approval: "変更承認", apply: "承認された差分のみ適用", verify: "復旧確認・引き継ぎ",
 };
 

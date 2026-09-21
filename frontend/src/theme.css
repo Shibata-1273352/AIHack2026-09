@@ -243,6 +243,15 @@ a:hover { color: var(--blue-hover); }
 @keyframes nwdrawer { from { transform: translateX(100%); } to { transform: none; } }
 .drawer-in { animation: nwdrawer 0.25s ease-out; }
 
+/* ---------------- 平易語＋技術名（二層テキスト） ---------------- */
+.term { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; }
+.term > b { font-weight: 600; }
+.term > small {
+  font-family: var(--mono); font-size: 0.8em; font-weight: 400;
+  color: var(--text-faint); white-space: nowrap;
+}
+.term-block { display: flex; flex-wrap: wrap; }
+
 /* ---------------- 行クランプ ---------------- */
 .clamp1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -354,7 +363,91 @@ a:hover { color: var(--blue-hover); }
 .approval-focus > div { min-height:0 !important; }
 .approval-focus input { width:170px !important; }
 .approval-focus [style*="font-size: 11.5px"] { font-size:15px !important; }
-.demo-footer { display:flex; justify-content:space-between; gap:16px; font-size:12px; color:#738093; padding:20px 0 0; }
+.demo-footer { display:flex; justify-content:space-between; gap:16px; font-size:12px; color:#738093; padding:20px 0 0; flex-wrap:wrap; align-items:center; }
+
+/* 「本物のネットワーク」バッジ（S3）。最後の主回線チップだけがデモ中に動く。 */
+.foot-chips { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.foot-chip {
+  padding:4px 11px; border-radius:999px; font-size:11.5px; font-weight:600;
+  background:#eef2f7; color:#5d6773; border:1px solid #dde4ed; white-space:nowrap;
+}
+.foot-chip.down { background:var(--bg-red-tint); color:var(--red); border-color:#efcec7; }
+.foot-chip.up { background:var(--bg-green-tint); color:var(--green); border-color:#c6e1d2; }
+
+/* ---------------- 自力復旧タイムライン（S4） ---------------- */
+.failover-timeline {
+  border-left:3px solid #8a94a0; background:#f7f9fc; border-radius:8px;
+  padding:12px 14px; display:flex; flex-direction:column; gap:8px;
+}
+.failover-timeline > b { font-size:14px; color:var(--ink); }
+.failover-timeline ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.failover-timeline li { display:flex; gap:10px; align-items:baseline; font-size:14px; }
+.failover-timeline time { font-family:var(--mono); font-size:12.5px; color:var(--text-muted); flex:none; }
+.failover-timeline li small { display:block; font-size:11.5px; color:var(--text-faint); }
+.failover-timeline p { margin:0 !important; font-size:14px !important; line-height:1.7 !important; }
+
+/* ---------------- 調査ログ（S4b・高さ固定でページを伸ばさない） ---------------- */
+.investigation-log { max-height:216px; overflow-y:auto; overscroll-behavior:contain; }
+.investigation-log ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; }
+.log-row {
+  display:grid; grid-template-columns:16px 58px minmax(0,1fr) auto; gap:8px;
+  align-items:baseline; padding:5px 4px; border-radius:6px; font-size:14px;
+}
+.log-row time { font-family:var(--mono); font-size:12px; color:var(--text-faint); }
+.log-mark { font-size:12px; }
+.log-body { min-width:0; }
+.log-title { display:block; line-height:1.5; }
+.log-detail { display:block; font-size:12.5px; color:var(--text-muted); line-height:1.6; margin-top:2px; }
+.log-count { font-size:11px; color:var(--text-faint); white-space:nowrap; }
+.log-row.done { color:#8a94a0; }
+.log-row.done .log-mark { color:var(--green); }
+.log-row.latest { background:#eef3fc; color:var(--ink); font-weight:600; }
+.log-row.latest .log-mark { color:var(--blue); }
+.log-row[role="button"] { cursor:pointer; }
+.log-row[role="button"]:hover { background:#e5edfc; }
+.log-more { padding:2px 4px; }
+.log-more-btn { border:0; background:none; font:inherit; font-size:12px; color:var(--blue); cursor:pointer; padding:0; }
+
+/* ---------------- 複製環境の確認（S6） ---------------- */
+.clone-check { display:flex; flex-direction:column; gap:8px; font-size:13.5px; }
+.clone-lead { font-size:14px; color:var(--ink); }
+.clone-check.compact .clone-lead { font-size:12.5px; }
+.clone-step { font-size:12.5px; color:var(--text-muted); }
+.clone-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.clone-col { border-radius:8px; padding:8px 10px; background:var(--bg-subtle); border:1px solid var(--border-subtle); }
+.clone-col-head { font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+.clone-col div { font-size:12.5px; line-height:1.6; }
+.clone-col .ok { color:var(--green); font-weight:600; }
+.clone-col .ng { color:var(--red); font-weight:600; }
+.clone-col.before .ng { color:var(--red); }
+.clone-verdict { font-size:13.5px; color:var(--green); font-weight:600; }
+.clone-check.compact .clone-verdict { font-size:12.5px; }
+.clone-details { font-size:12px; color:var(--text-muted); }
+.clone-details summary { cursor:pointer; }
+.clone-details pre {
+  font-family:var(--mono); font-size:11px; line-height:1.5; white-space:pre-wrap;
+  overflow-wrap:anywhere; max-height:180px; overflow:auto;
+  background:var(--bg-faint); border-radius:6px; padding:8px; margin:4px 0 8px;
+}
+.clone-rulesets { display:grid; grid-template-columns:1fr; gap:6px; }
+
+/* ---------------- 却下後の出口（S5b） ---------------- */
+.rejected-exits { display:flex; flex-direction:column; gap:10px; font-size:14px; }
+.exits-lead { font-size:15px; color:var(--ink); line-height:1.6; }
+.rejected-exits.compact .exits-lead { font-size:12.5px; }
+.exits-reason, .exits-note, .exits-accepted, .exits-busy {
+  margin:0 !important; font-size:13px !important; line-height:1.7 !important; color:var(--text-muted) !important;
+}
+.exits-accepted { color:var(--green) !important; font-weight:600; }
+.exits-error { background:var(--bg-red-tint); color:var(--red); border-radius:8px; padding:8px 10px; font-size:12.5px; }
+.exits-buttons { display:flex; gap:8px; flex-wrap:wrap; }
+.exits-buttons button { flex:1 1 150px; font-size:14px !important; padding:11px 14px !important; }
+.exits-assignee { display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--text-muted); }
+.exits-assignee input { border:1px solid var(--border-input); border-radius:6px; padding:7px 9px; font:inherit; font-size:13px; min-width:0; }
+
+/* 承認カードの差分は主役。折り畳み見出しを目立たせる */
+.approval-diff { margin-top:8px; }
+.approval-diff > summary { font-weight:700; color:var(--amber); cursor:pointer; }
 .demo-notice { padding:12px 18px; background:#e7eefc; border-radius:10px; margin-bottom:16px; }
 .demo-notice.error { background:#fff0ed; color:#a83626; }
 .reset-hint { color:#6b7789; font-size:12px; margin:-12px 0 16px; }

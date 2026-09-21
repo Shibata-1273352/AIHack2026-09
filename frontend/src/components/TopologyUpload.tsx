@@ -56,17 +56,17 @@ export function TopologyUpload({ value, onChange }: {
   };
   const r = value?.result;
   return <section className="card upload-card">
-    <div className="upload-heading"><div><span className="eyebrow">構成理解 / PDF → VLM</span><h2>ネットワーク構成図を読み込む</h2></div><a href="/api/assets/demo-topology.pdf" download>デモPDFをダウンロード ↗</a></div>
+    <div className="upload-heading"><div><span className="eyebrow">構成理解 / PDFをAIが読み取る</span><h2>ネットワーク構成図を読み込む</h2></div><a href="/api/assets/demo-topology.pdf" download>デモPDFをダウンロード ↗</a></div>
     <input ref={input} type="file" accept="application/pdf,.pdf" aria-label="構成図PDF" disabled={working} onChange={e => { const f=e.target.files?.[0]; if(f) void upload(f); e.target.value=""; }} />
     {!value && <div className={`upload-drop ${drag ? "dragging" : ""}`}
       onDragOver={e => {e.preventDefault();setDrag(true);}} onDragLeave={() => setDrag(false)}
       onDrop={e => {e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f) void upload(f);}}>
-      <div className="upload-icon">↥</div><h3>構成図のPDFをここにドロップ</h3><p>画像とテキストから機器・接続を抽出し、登録構成と照合します。</p><small>PDF / 1〜3ページ / 最大10MB · OrcaRouterに送信して解析</small>
+      <div className="upload-icon">↥</div><h3>構成図のPDFをここにドロップ</h3><p>図とテキストから機器・接続をAIが読み取り、登録済みの構成と照合します。</p><small>PDF / 1〜3ページ / 最大10MB · OrcaRouter経由で解析</small>
       <div className="upload-actions"><button className="btn-primary" onClick={() => input.current?.click()}>PDFを選択</button><button className="btn-outline" onClick={demo}>デモPDFで試す</button></div>
     </div>}
     {value && <>
       <div className="upload-filename"><b>{value.filename}</b><span>{working ? "解析中" : value.status === "error" ? "解析失敗" : r?.comparison?.ok ? "登録構成と一致" : "確認が必要"}</span></div>
-      {working && <div className="upload-progress" role="status"><span className="spinner"/><h3>VLMが構成図を読み取っています</h3><p>{value.completed_pages} / {value.page_count || "?"} ページ完了。実際のモデル応答を待っています。</p></div>}
+      {working && <div className="upload-progress" role="status"><span className="spinner"/><h3>マルチモーダルAIが構成図を読み取っています</h3><p>{value.completed_pages} / {value.page_count || "?"} ページ完了。実際のモデル応答を待っています。</p></div>}
       {value.status === "error" && <div className="demo-notice error" role="alert">{value.error}</div>}
       {r && <>
         <div className="upload-stats"><div><strong>{r.mapped_nodes.length}</strong><span>抽出した機器</span></div><div><strong>{r.mapped_links.length}</strong><span>抽出した接続</span></div><div><b>{r.source.startsWith("golden") ? "記録再生" : "実推論"}</b><span>{r.model?.resolved_model || r.model?.route}</span></div></div>

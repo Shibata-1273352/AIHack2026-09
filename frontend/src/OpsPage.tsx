@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { post, useConfig } from "./api";
 
 export default function OpsPage() {
-  const cfg = useConfig();
+  const { cfg } = useConfig();
   const [gt, setGt] = useState<any>(null);
   const [log, setLog] = useState<string[]>([]);
   const [busy, setBusy] = useState("");

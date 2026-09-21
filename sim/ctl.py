@@ -44,6 +44,11 @@ PROBE_PORTS = {443, 23, 80}
 
 EXEC_DB = RUN / "executions.json"
 
+# 冗長化制御デーモン（failover.py）の検知条件。画面の自力復旧タイムラインに
+# 「1秒ごとに監視・3回連続で確定」と表示するため、ここでも公開する。
+FAILOVER_POLL_SEC = 1.0
+FAILOVER_THRESHOLD = 3
+
 
 # ---------------------------------------------------------------- utilities
 
@@ -485,6 +490,7 @@ def plan_validate(req: ValidateReq) -> dict[str, Any]:
     return {
         "verified": verified,
         "clone_match": True,
+        "clone": clone,  # 複製の実行手順（画面で「本番に触る前に試した」証拠として見せる）
         "clone_tests_pre": {"business": pre_business, "forbidden": pre_forbidden},
         "applied_in_verify": {"deleted_rule": result["deleted_rule"]},
         "diff": {"pre": result["pre_ruleset"], "post": result["post_ruleset"]},
@@ -622,6 +628,36 @@ def admin_pulse() -> dict[str, Any]:
     }
 
 
+@app.get("/admin/failover")
+def admin_failover() -> dict[str, Any]:
+    """登録済み冗長化制御（デーモン）の検知・切替履歴（UI 演出用）。
+
+    /agent/* ではないためエージェントからは不可視（§7.3）であり、読取上限(N-04)も
+    消費しない。**正解フラグ（fault_a/fault_b）は返さない** —— 審査画面に「答え」を
+    映さないため、ground_truth とは別のエンドポイントに分けている。
+    """
+    f = RUN / "t-failover.json"
+    log = RUN / "t-failover.log"
+    state: dict[str, Any] | None = None
+    if f.exists():
+        try:
+            state = json.loads(f.read_text())
+        except json.JSONDecodeError:
+            state = None
+    return {
+        # 検知条件（画面に「1秒ごとに監視・3回連続で確定」と出すため同梱）
+        "poll_sec": FAILOVER_POLL_SEC,
+        "threshold": FAILOVER_THRESHOLD,
+        "active_path": (state or {}).get("active_path", "r1"),
+        "primary_link_up": (state or {}).get("primary_link_up"),
+        "updated_at": (state or {}).get("updated_at"),
+        "history": (state or {}).get("history", []),
+        "log_tail": log.read_text().splitlines()[-10:] if log.exists() else [],
+        # sim コンテナ内の時計。案件側（ホスト時刻）と引き算してはいけない
+        "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+
+
 @app.get("/admin/ground_truth")
 def ground_truth() -> dict[str, Any]:
     """正解情報（評価系のみ参照。診断エージェントへは渡さない）。"""
@@ -644,6 +680,11 @@ def ground_truth() -> dict[str, Any]:
 @app.get("/healthz")
 def healthz() -> dict[str, Any]:
     ns = sh(["ip", "netns", "list"])
+    lines = [ln for ln in ns["stdout"].splitlines() if ln.strip()]
     have_t = all(f"t-{n}" in ns["stdout"] for n in NODES)
-    return {"ok": have_t, "netns": ns["stdout"].splitlines(),
+    return {"ok": have_t, "netns": lines,
+            # 「本物のネットワーク」バッジ用。実在する名前空間の数をそのまま返す
+            "netns_count": len(lines),
+            "target_netns_count": sum(1 for ln in lines if ln.startswith("t-")),
+            "verify_netns_count": sum(1 for ln in lines if ln.startswith("v-")),
             "at": time.strftime("%Y-%m-%dT%H:%M:%S")}

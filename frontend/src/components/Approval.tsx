@@ -5,6 +5,8 @@
 import { ReactNode, useEffect, useState } from "react";
 import { post } from "../api";
 import type { Bundle } from "../types";
+import { CloneCheck } from "./CloneCheck";
+import { Term } from "./Plain";
 
 export function useClock(): string {
   const [now, setNow] = useState(new Date());
@@ -19,6 +21,7 @@ export function useClock(): string {
 
 export function useApproval(bundle: Bundle) {
   const [approver, setApprover] = useState("田中（変更承認権限）");
+  const [reason, setReason] = useState("");   // 却下理由（任意・人間向けの記録のみ）
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [, tick] = useState(0);
@@ -43,6 +46,7 @@ export function useApproval(bundle: Bundle) {
     try {
       await post(`/api/incidents/${inc.id}/approval`, {
         plan_id: ap.plan_id, plan_hash: ap.plan_hash, decision, approver,
+        reason: decision === "reject" ? reason : "",
       });
     } catch (e: any) {
       setError(e.message);
@@ -51,16 +55,87 @@ export function useApproval(bundle: Bundle) {
     }
   };
 
-  return { inc, ap, plan, remain, remainStr, error, decide, approver, setApprover, busy };
+  return { inc, ap, plan, remain, remainStr, error, decide, approver, setApprover,
+           reason, setReason, busy };
+}
+
+// ---------------------------------------------------------------- 却下後の出口（M-12 / §14.3）
+
+/**
+ * 却下すると担当者対応待ちで止まるが、そこで画面が行き止まりになると
+ * 4分の発表で却下を実演した瞬間に詰む。却下は失敗ではなく正常な安全動作なので、
+ * 「何も変えていない」ことを明示したうえで、次へ進む道を3つ用意する。
+ */
+export function RejectedExits({ bundle, onReset, compact }: {
+  bundle: Bundle; onReset?: () => void; compact?: boolean;
+}) {
+  const inc = bundle.incident;
+  const handoff = bundle.handoffs[bundle.handoffs.length - 1];
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [assignee, setAssignee] = useState("ネットワーク運用担当（一次対応）");
+  if (!inc) return null;
+
+  const run = async (label: string, fn: () => Promise<unknown>) => {
+    if (busy) return;
+    setBusy(label); setError("");
+    try { await fn(); }
+    catch (e: any) { setError(e.message || "処理に失敗しました"); }
+    finally { setBusy(""); }
+  };
+
+  const accepted = handoff?.status === "accepted" || handoff?.status === "held";
+
+  return (
+    <div className={`rejected-exits${compact ? " compact" : ""}`}>
+      <b className="exits-lead">承認しなかったので、ネットワークには何も変更していません</b>
+      {handoff?.reason && <p className="exits-reason">却下の理由：{handoff.reason}</p>}
+      {handoff && (
+        <p className="exits-note">
+          これまでの調査結果（証拠 {handoff.evidence_ids.length}件・仮説 {handoff.hypothesis_ids.length}件）と
+          却下した変更案は、この案件に記録済みです。担当を替えても入力し直す必要はありません。
+        </p>
+      )}
+      {accepted && (
+        <p className="exits-accepted">
+          引き継ぎを{handoff?.status === "accepted" ? "受領" : "保留"}として記録しました
+          {handoff?.notes.at(-1)?.assignee ? `（${handoff.notes.at(-1)!.assignee}）` : ""}
+        </p>
+      )}
+      {error && <div role="alert" className="exits-error">{error}</div>}
+      <div className="exits-buttons">
+        <button className="btn-primary" disabled={!!busy}
+          onClick={() => run("調べ直しています", () => post(`/api/incidents/${inc.id}/reinvestigate`))}>
+          もう一度調べ直す
+        </button>
+        <button className="btn-outline" disabled={!!busy || !handoff}
+          onClick={() => run("引き継ぎを記録しています", () => post(`/api/incidents/${inc.id}/handoff`,
+            { action: "accept", assignee, note: "" }))}>
+          担当者に引き継ぐ
+        </button>
+        {onReset && (
+          <button className="btn-outline" disabled={!!busy} onClick={onReset}>
+            デモを初期状態へ戻す
+          </button>
+        )}
+      </div>
+      <label className="exits-assignee">
+        引き継ぎ先
+        <input value={assignee} onChange={(e) => setAssignee(e.target.value)} />
+      </label>
+      {busy && <div role="status" className="exits-busy">{busy}…</div>}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------- 承認画面（共有）
 
-export function ApprovalScreen({ bundle, compact, footer }: {
-  bundle: Bundle; compact?: boolean; footer?: ReactNode;
+export function ApprovalScreen({ bundle, compact, footer, onReset }: {
+  bundle: Bundle; compact?: boolean; footer?: ReactNode; onReset?: () => void;
 }) {
   const clock = useClock();
-  const { inc, ap, plan, remain, remainStr, error, decide, approver, setApprover, busy } = useApproval(bundle);
+  const { inc, ap, plan, remain, remainStr, error, decide, approver, setApprover,
+          reason, setReason, busy } = useApproval(bundle);
 
   const card: React.CSSProperties = {
     background: "#fff", borderRadius: compact ? 10 : 12, padding: compact ? "9px 11px" : "12px 14px",
@@ -73,15 +148,16 @@ export function ApprovalScreen({ bundle, compact, footer }: {
   const statusLine = (() => {
     if (!inc) return null;
     switch (inc.status) {
-      case "APPLYING": return { t: "実行中 · 承認された差分を適用しています", c: "#1f5fbf" };
-      case "VERIFYING": return { t: "検証中 · 独立検証器で業務テストを実行", c: "#1f5fbf" };
-      case "SERVICE_RESTORED": return { t: "業務復旧 · 主回線の対応は継続（残存課題あり）", c: "#1f8a5b" };
+      case "APPLYING": return { t: "承認された1件だけを適用しています", c: "#1f5fbf" };
+      case "VERIFYING": return { t: "利用者と同じ通信で、復旧を確認しています", c: "#1f5fbf" };
+      case "SERVICE_RESTORED": return { t: "業務が復旧しました · 主回線の対応は継続中です", c: "#1f8a5b" };
       case "RESOLVED": return { t: "解決済み", c: "#1f8a5b" };
-      case "NEEDS_HUMAN": return { t: "担当者対応待ち（NEEDS_HUMAN）", c: "#b9770e" };
-      case "ROLLING_BACK": return { t: "復元中", c: "#b9770e" };
+      case "NEEDS_HUMAN": return { t: "担当者の判断が必要です（対象環境は変更していません）", c: "#b9770e" };
+      case "ROLLING_BACK": return { t: "適用前の状態へ戻しています", c: "#b9770e" };
       default: return null;
     }
   })();
+  const rejected = ap?.decision === "rejected";
 
   return (
     <div style={{
@@ -101,9 +177,13 @@ export function ApprovalScreen({ bundle, compact, footer }: {
           {inc ? `${inc.id.toUpperCase()} · ${inc.site}` : "案件なし"}
         </div>
         {plan && (
-          <div style={{ fontFamily: "var(--mono)", fontSize: compact ? 10 : 11, color: "#5d6773", marginTop: 2 }}>
-            {plan.id.toUpperCase()}-v{plan.version} · hash {plan.hash.slice(0, 8)}
-            {ap?.decision === "pending" && ` · 有効期限 ${remainStr}`}
+          <div style={{ fontSize: compact ? 10 : 11, color: "#5d6773", marginTop: 2 }}>
+            {/* hash は消さず従属表示にする。「人間がこのハッシュの計画を承認した」ことが論拠 */}
+            <Term plain={`変更案 第${plan.version}版`}
+              tech={`${plan.id.toUpperCase()}-v${plan.version} · hash ${plan.hash.slice(0, 8)}`} />
+            {ap?.decision === "pending" && (
+              <span style={{ marginLeft: 8 }}>有効期限 {remainStr}</span>
+            )}
           </div>
         )}
       </div>
@@ -117,29 +197,37 @@ export function ApprovalScreen({ bundle, compact, footer }: {
 
       {plan && (
         <div style={{ padding: `0 ${pad}px`, display: "flex", flexDirection: "column", gap: compact ? 6 : 8, fontSize: fs }}>
-          <div style={card}>
+          {/* 差分はカードの主役。「実際に流す1行」を人が見て承認したことが論拠になる（ASI09） */}
+          <div style={{ ...card, borderColor: "rgba(185,119,14,.35)" }}>
             <div style={lbl}>変更内容</div>
-            <div style={{ marginTop: 2, lineHeight: 1.5 }}>{plan.title}</div>
-            <details style={{ marginTop: 8 }}><summary>変更差分を確認</summary>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 12, marginTop: 4, color: "#5d6773", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{plan.diff}</div>
+            <div style={{ marginTop: 2, lineHeight: 1.5, fontWeight: 600 }}>
+              {plan.title_plain ?? plan.title}
+            </div>
+            <div style={{ marginTop: 6, lineHeight: 1.5, color: "#5d6773" }}>
+              {plan.diff_plain ?? "承認された1件だけを適用します。"}
+            </div>
+            <details className="approval-diff" open={!compact}>
+              <summary>実際に流す変更（1行）を見る</summary>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 12, marginTop: 6, color: "#c73a2b", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{plan.diff}</div>
             </details>
           </div>
             <>
               <div style={card}>
-                <div style={lbl}>想定影響</div>
-                <div style={{ marginTop: 2, lineHeight: 1.5 }}>{plan.impact}</div>
+                <div style={lbl}>この変更で起きること</div>
+                <div style={{ marginTop: 2, lineHeight: 1.5 }}>{plan.impact_plain ?? plan.impact}</div>
               </div>
               <div style={card}>
-                <div style={lbl}>事前検証（検証用環境の複製で実測）</div>
-                <div style={{ marginTop: 2, lineHeight: 1.5, color: plan.validation?.verified ? "#1f8a5b" : "#c73a2b", fontWeight: 600 }}>
-                  {plan.validation?.verified
-                    ? "複製一致 · 業務テスト 3/3 · 禁止通信 遮断維持 · 合格"
-                    : "未検証または不合格"}
-                </div>
+                <div style={lbl}>本番に出す前の確認</div>
+                <CloneCheck plan={plan} compact />
+                {!plan.validation?.verified && (
+                  <div style={{ marginTop: 2, lineHeight: 1.5, color: "#c73a2b", fontWeight: 600 }}>
+                    複製環境での確認に合格していません
+                  </div>
+                )}
               </div>
               <div style={card}>
-                <div style={lbl}>失敗時の復元</div>
-                <div style={{ marginTop: 2, lineHeight: 1.5 }}>{plan.rollback}</div>
+                <div style={lbl}>うまくいかなかったときは</div>
+                <div style={{ marginTop: 2, lineHeight: 1.5 }}>{plan.rollback_plain ?? plan.rollback}</div>
               </div>
             </>
         </div>
@@ -174,9 +262,18 @@ export function ApprovalScreen({ bundle, compact, footer }: {
             <button className="btn-green" disabled={busy || remain <= 0 || !approver.trim()} style={{ borderRadius: 13, padding: compact ? 11 : 14 }} onClick={() => decide("approve")}>
               {busy ? "送信中…" : "承認して適用へ"}
             </button>
+            <div style={{ fontSize: compact ? 10.5 : 11.5, color: "#5d6773", textAlign: "center" }}>
+              承認した1件以外は、何も変更されません
+            </div>
             <button className="btn-outline" disabled={busy || remain <= 0 || !approver.trim()} style={{ borderRadius: 11, color: "#c73a2b", padding: compact ? "8px 12px" : undefined }} onClick={() => decide("reject")}>
               却下（対象環境は変更されません）
             </button>
+            <label style={{ fontSize: compact ? 10 : 11, color: "#5d6773", display: "flex", flexDirection: "column", gap: 4 }}>
+              却下する場合の理由（任意・記録用）
+              <input value={reason} onChange={(e) => setReason(e.target.value)}
+                placeholder="例：メンテナンス時間外のため"
+                style={{ border: "1px solid #d6dbe1", borderRadius: 6, padding: "6px 8px", font: "inherit", minWidth: 0 }} />
+            </label>
           </>
         )}
 
@@ -190,6 +287,10 @@ export function ApprovalScreen({ bundle, compact, footer }: {
               ? `承認済み · ${ap.decided_at?.slice(11)} · ${ap.approver} · 即時同期`
               : ap.decision === "rejected" ? "却下 · 対象環境は変更されません" : "期限切れ · 再検証・再承認が必要です"}
           </div>
+        )}
+
+        {rejected && inc?.status === "NEEDS_HUMAN" && (
+          <RejectedExits bundle={bundle} onReset={onReset} compact={compact} />
         )}
 
         {footer}

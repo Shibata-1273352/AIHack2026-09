@@ -41,8 +41,10 @@ def create(symptom: str, site: str, business: str,
         "status_label": STATE_LABELS["RECEIVED"],
         "status_history": [{"status": "RECEIVED", "at": db.now_iso()}],
         "current_activity": "案件を受け付けました",
+        "current_activity_tech": "",   # 技術層（技術詳細モーダル側で表示する）
         "mode": mode,  # llm | scripted | scripted_fallback
         "route_label": None,
+        "route_detail": None,          # 技術層（方式名・候補列など）
         "residual_issues": [],
         "graph_status": {"nodes": {}, "links": {}},
         "success_criteria": "受注画面(HTTPS)の3回連続成功と、禁止通信(telnet)の遮断維持",
@@ -67,7 +69,15 @@ def _save_publish(inc: dict[str, Any]) -> None:
     events.publish("incident", {"incident": inc})
 
 
-def transition(incident_id: str, new_status: str, note: str = "") -> dict[str, Any]:
+def transition(incident_id: str, new_status: str, note: str = "", *,
+               activity: str | None = None) -> dict[str, Any]:
+    """状態遷移。
+
+    二層テキスト（画面は平易・技術詳細は技術層）:
+    - `activity` … 画面見出しに出す平易な一文。省略時は STATE_LABELS（既に平易）。
+    - `note`     … 技術層。状態履歴と current_activity_tech に残す。
+      例外クラス名・要件ID・生の設定値はこちらへ入れる（画面見出しには出さない）。
+    """
     inc = get(incident_id)
     old = inc["status"]
     if new_status not in STATES:
@@ -76,8 +86,8 @@ def transition(incident_id: str, new_status: str, note: str = "") -> dict[str, A
     inc["status_label"] = STATE_LABELS[new_status]
     inc["status_history"].append(
         {"status": new_status, "at": db.now_iso(), "note": note})
-    if note:
-        inc["current_activity"] = note
+    inc["current_activity"] = activity or STATE_LABELS[new_status]
+    inc["current_activity_tech"] = note
     _save_publish(inc)
     otel.record_span(incident_id, f"状態遷移 {old}→{new_status}", "state",
                      int(time.time() * 1000) - 1, int(time.time() * 1000),
@@ -85,9 +95,10 @@ def transition(incident_id: str, new_status: str, note: str = "") -> dict[str, A
     return inc
 
 
-def set_activity(incident_id: str, text: str) -> None:
+def set_activity(incident_id: str, text: str, tech: str = "") -> None:
     inc = get(incident_id)
     inc["current_activity"] = text
+    inc["current_activity_tech"] = tech
     _save_publish(inc)
 
 

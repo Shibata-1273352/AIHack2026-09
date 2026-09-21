@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Approval, Bundle, Evidence, Hypothesis, Plan, SimPulse } from "../types";
 import { LiveIndicator } from "./Topology";
+import { Term, readSourceLabel } from "./Plain";
 
 const AC = { open: "#b9770e", supported: "#c73a2b", rejected: "#8a94a0" } as const;
 const AS = { open: "調査中", supported: "支持", rejected: "棄却" } as const;
@@ -85,8 +86,8 @@ export function VlmCard({ bundle }: { bundle: Bundle }) {
   return (
     <section className="card fadein">
       <div className="card-head">
-        <h2>VLM 読取結果</h2>
-        <span className="card-note" style={{ fontFamily: "var(--mono)" }}>{r.source?.startsWith("registered_table") ? "登録情報 · VLM未実行" : r.source?.startsWith("golden") ? "記録済みVLM応答の再生" : model}</span>
+        <h2>構成図の読取結果（マルチモーダルAI）</h2>
+        <span className="card-note"><Term plain={readSourceLabel(r.source)} tech={model} /></span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
         {[["抽出ノード", String(nodes.length), false],
@@ -321,7 +322,7 @@ export function CauseAndPlanCard({ bundle }: { bundle: Bundle }) {
             </span>
           </div>
           {v.verified && [
-            ["複製環境と対象環境の一致（リンク・経路・ACL・サービス・通信）", "一致"],
+            ["複製環境と対象環境の一致（回線・経路・通信ルール・サービス・通信）", "一致"],
             ["修正前の再現：業務テスト", v.pre?.business ? "合格（再現失敗）" : "不合格＝対象環境と同じ"],
             ["修正後：業務テスト HTTPS 受注画面", v.post?.business ? "3/3 成功" : "失敗"],
             ["回帰：禁止通信 telnet(23)", v.post?.forbidden ? "遮断維持" : "遮断解除（不合格）"],
@@ -365,7 +366,7 @@ export function ApplyCard({ bundle }: { bundle: Bundle }) {
     },
     {
       name: "適用前状態を永続化し、承認された差分のみ適用",
-      detail: ex ? `EXEC-${ex.execution_id} · 冪等キー ${ex.idempotency_key.slice(0, 6)}` : "",
+      detail: ex ? `EXEC-${ex.execution_id} · 二重適用の防止キー ${ex.idempotency_key.slice(0, 6)}` : "",
       state: ex ? "done" : "wait",
     },
     {
@@ -567,7 +568,7 @@ export function InsightRibbon({ bundle, style }: { bundle: Bundle; style?: React
       const pending = (r.comparison?.unmatched_labels?.length ?? 0) + (r.comparison?.missing_registered?.length ?? 0);
       chips.push(
         <RChip key="vlm" fg="var(--blue)" bg="var(--bg-chip-blue)">
-          {r.source?.startsWith("registered_table") ? "登録情報（VLM未実行）" : r.source?.startsWith("golden") ? "VLM記録再生" : "VLM読取"} · ノード{(r.mapped_nodes ?? []).length} · リンク{(r.mapped_links ?? []).length}
+          {readSourceLabel(r.source)} · 機器{(r.mapped_nodes ?? []).length} · 接続{(r.mapped_links ?? []).length}
           {pending > 0 ? ` · 確認待ち${pending}` : ""}
         </RChip>,
       );

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { Bundle, Incident } from "../types";
 
 export const STEP_NAMES = [
-  "受付・構成図", "構成理解（VLM照合）", "自律調査",
+  "受付・構成図", "構成理解（図とAIの照合）", "自律調査",
   "原因提示・承認", "自動復旧", "復旧確認・引き継ぎ",
 ];
 

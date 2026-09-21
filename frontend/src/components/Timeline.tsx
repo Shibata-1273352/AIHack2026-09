@@ -14,7 +14,7 @@ const KIND_COLOR: Record<string, string> = {
   internal: "#5d6773",
 };
 const KIND_LABEL: Record<string, string> = {
-  tool: "ツール実測", verifier: "独立検証器", llm: "LLM/VLM", state: "状態遷移",
+  tool: "ツール実測", verifier: "独立検証器", llm: "AIの判断", state: "状態遷移",
   approval: "承認（人間）", internal: "内部処理",
 };
 
@@ -24,7 +24,7 @@ function KpiChips({ bundle }: { bundle: Bundle }) {
   const cost = runs.reduce((a, r) => a + (r.cost_usd ?? 0), 0);
   const elapsed = useElapsed(bundle.incident);
   const items = [
-    `LLM ${runs.length}回`,
+    `AI ${runs.length}回`,
     `tok ${tokens.toLocaleString()}`,
     `$${cost.toFixed(4)}`,
     `tool ${bundle.evidence.length}回`,
@@ -60,7 +60,7 @@ export function TimelineCard({ bundle, style }: { bundle: Bundle; style?: React.
   return (
     <section className="card" style={{ minWidth: 0, minHeight: 0, gap: 8, ...style }}>
       <div className="card-head" style={{ flex: "none" }}>
-        <h2>実行タイムライン（OTelスパン）</h2>
+        <h2>実行タイムライン（処理の記録）</h2>
         {bundle.incident && (
           <span className="card-note" style={{ fontFamily: "var(--mono)", marginLeft: 10 }}>
             trace={bundle.incident.id} · {spans.length} spans · {(total / 1000).toFixed(1)}s
@@ -70,7 +70,7 @@ export function TimelineCard({ bundle, style }: { bundle: Bundle; style?: React.
       </div>
       {empty ? (
         <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
-          調査開始で LLM 判断・ツール実測・承認・検証のスパンがここへ並びます。
+          調査開始で AIの判断・ツール実測・承認・検証の記録がここへ並びます。
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 4, overflow: "hidden", justifyContent: "center" }}>

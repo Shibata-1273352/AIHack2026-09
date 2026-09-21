@@ -76,6 +76,15 @@ def latest_incident() -> dict[str, Any] | None:
     return json.loads(row["data"]) if row else None
 
 
+def archive_incident(incident_id: str) -> None:
+    """1件だけを退避する（却下後の再調査で、障害状態はそのままに案件を切り替える）。"""
+    with _lock:
+        c = conn()
+        c.execute("INSERT OR IGNORE INTO archived_incidents(id) VALUES(?)",
+                  (incident_id,))
+        c.commit()
+
+
 def archive_demo() -> None:
     """Keep historical evidence, but start the next presentation with no active case."""
     with _lock:

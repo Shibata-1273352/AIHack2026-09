@@ -2,7 +2,7 @@
 // 接続時に全量を取得し、SSE で増分反映。切断時は再接続して全量を再取得する（T-12）。
 
 import { useEffect, useRef, useState } from "react";
-import type { Bundle, AppConfig, SimPulse } from "./types";
+import type { Bundle, AppConfig, SimPulse, SimFailover } from "./types";
 
 // 変更系API用の操作トークン（M-09/N-02）。demo.sh が案内する URL の ?token= から
 // 取り込み localStorage に保持、以降の POST に X-Netwalker-Token として付与する。
@@ -29,7 +29,7 @@ function tokenHeader(): Record<string, string> {
 
 const EMPTY: Bundle = {
   incident: null, evidence: [], hypotheses: [], plans: [], approvals: [],
-  executions: [], spans: [], model_runs: [], steps: [],
+  executions: [], spans: [], model_runs: [], steps: [], handoffs: [],
 };
 
 function upsert<T extends { id: string }>(list: T[], item: T): T[] {
@@ -41,11 +41,13 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 }
 
 export function useBundle(): {
-  bundle: Bundle; connected: boolean; pulse: SimPulse | null; refresh: () => void;
+  bundle: Bundle; connected: boolean; pulse: SimPulse | null;
+  failover: SimFailover | null; refresh: () => void;
 } {
   const [bundle, setBundle] = useState<Bundle>(EMPTY);
   const [connected, setConnected] = useState(false);
   const [pulse, setPulse] = useState<SimPulse | null>(null);
+  const [failover, setFailover] = useState<SimFailover | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const generation = useRef(0);
   const [clock, setClock] = useState(Date.now());
@@ -82,11 +84,16 @@ export function useBundle(): {
           generation.current++;
           setBundle(EMPTY);
           setPulse(null);
+          setFailover(null);
           return;
         }
         if (ev.type === "sim_pulse") {
           lastPulse.current = Date.now();
           setPulse(ev.pulse);
+          return;
+        }
+        if (ev.type === "sim_failover") {
+          setFailover(ev.failover);
           return;
         }
         setBundle((b) => {
@@ -109,6 +116,8 @@ export function useBundle(): {
               return { ...b, model_runs: upsert(b.model_runs, ev.model_run) };
             case "agent_step":
               return { ...b, steps: upsert(b.steps, ev.step) };
+            case "handoff":
+              return { ...b, handoffs: upsert(b.handoffs, ev.handoff) };
             case "node_status":
               if (!b.incident) return b;
               return {
@@ -150,15 +159,18 @@ export function useBundle(): {
     return () => { stopped = true; clearInterval(timer); generation.current++; esRef.current?.close(); };
   }, []);
 
-  return { bundle, connected, pulse: connected && clock - lastPulse.current < 6000 ? pulse : null, refresh };
+  return {
+    bundle, connected,
+    pulse: connected && clock - lastPulse.current < 6000 ? pulse : null,
+    failover, refresh,
+  };
 }
 
-export function useConfig(): AppConfig | null {
+export function useConfig(): { cfg: AppConfig | null; refresh: () => void } {
   const [cfg, setCfg] = useState<AppConfig | null>(null);
-  useEffect(() => {
-    fetch("/api/config").then((r) => r.json()).then(setCfg).catch(() => {});
-  }, []);
-  return cfg;
+  const load = () => { fetch("/api/config").then((r) => r.json()).then(setCfg).catch(() => {}); };
+  useEffect(load, []);
+  return { cfg, refresh: load };
 }
 
 export async function post(path: string, body?: unknown): Promise<any> {

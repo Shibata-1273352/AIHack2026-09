@@ -53,6 +53,11 @@ def _pulse_loop() -> None:
             events.publish("sim_pulse", {"pulse": scenario.pulse()})
         except Exception:  # noqa: BLE001  sim 停止中は配信を止めるだけ（UI側は「同期待ち」表示）
             pass
+        try:
+            # 冗長化制御の検知・切替履歴（自力復旧タイムライン）。正解フラグは含まない
+            events.publish("sim_failover", {"failover": scenario.failover()})
+        except Exception:  # noqa: BLE001
+            pass
         time.sleep(2)
 
 
@@ -105,6 +110,7 @@ def _bundle(inc: dict[str, Any]) -> dict[str, Any]:
         "spans": db.list_records(iid, "span"),
         "model_runs": db.list_records(iid, "model_run"),
         "steps": db.list_records(iid, "step"),
+        "handoffs": db.list_records(iid, "handoff"),
     }
 
 
@@ -131,6 +137,7 @@ class ApprovalReq(BaseModel):
     plan_hash: str
     decision: str  # approve | reject
     approver: str
+    reason: str = ""   # 却下理由（任意）。人間向けの記録・表示のみに使う
 
 
 @app.post("/api/incidents/{incident_id}/approval")
@@ -146,13 +153,83 @@ def decide_approval(incident_id: str, req: ApprovalReq, request: Request) -> dic
 def _decide_approval(incident_id: str, req: ApprovalReq) -> dict[str, Any]:
     try:
         ap = approval.decide(incident_id, req.plan_id, req.plan_hash,
-                             req.decision, req.approver)
+                             req.decision, req.approver, req.reason)
     except PermissionError as exc:
         raise HTTPException(403, str(exc))
     except ValueError as exc:
         raise HTTPException(422, str(exc))
     agent.on_approval_decided(incident_id, ap)
     return ap
+
+
+# ---------------------------------------------------------------- 却下後の出口（M-12 / §14.3）
+
+class HandoffReq(BaseModel):
+    action: str            # accept | hold
+    assignee: str = ""
+    note: str = ""
+
+
+@app.post("/api/incidents/{incident_id}/handoff")
+def record_handoff(incident_id: str, req: HandoffReq, request: Request) -> dict[str, Any]:
+    """引き継ぎの受領／保留を記録する（§14.3「受領・保留・残存課題が記録される」）。
+
+    担当交代後も再入力は不要。引き継ぎレコードが証拠・仮説・計画への参照を持つ。
+    """
+    require_token(request)
+    if req.action not in ("accept", "hold"):
+        raise HTTPException(422, "action must be accept|hold")
+    with runtime.lock:
+        try:
+            incident.get(incident_id)
+        except KeyError:
+            raise HTTPException(404, "案件が見つかりません")
+        records = db.list_records(incident_id, "handoff")
+        if not records:
+            raise HTTPException(404, "この案件には引き継ぎレコードがありません")
+        rec = records[-1]
+        rec["status"] = "accepted" if req.action == "accept" else "held"
+        rec["notes"] = [*rec.get("notes", []), {
+            "at": db.now_iso(), "action": req.action,
+            "assignee": req.assignee.strip()[:120],
+            "note": req.note.strip()[:500],
+        }]
+        db.update_record(rec["id"], rec)
+        events.publish("handoff", {"incident_id": incident_id, "handoff": rec})
+        incident.set_activity(
+            incident_id,
+            "引き継ぎを受領しました（対象環境は変更していません）" if req.action == "accept"
+            else "引き継ぎを保留として記録しました（対象環境は変更していません）",
+            f"handoff {rec['id']} → {rec['status']}")
+        return rec
+
+
+@app.post("/api/incidents/{incident_id}/reinvestigate")
+def reinvestigate(incident_id: str, request: Request) -> dict[str, Any]:
+    """却下された案件を退避し、**障害状態はそのままに**新しい案件で調べ直す。
+
+    sim をリセットしないので、デモは障害を注入し直さずに続行できる。
+    却下した計画・証拠・引き継ぎレコードは退避された案件に残る（履歴は消えない）。
+    """
+    require_token(request)
+    with runtime.lock:
+        if runtime.workers:
+            raise HTTPException(409, "調査・適用処理中です。完了してからお試しください")
+        current = db.latest_incident()
+        if not current or current["id"] != incident_id:
+            raise HTTPException(409, "この案件は最新ではありません。画面を再読み込みしてください")
+        if current["status"] not in ("NEEDS_HUMAN", "CANCELLED"):
+            raise HTTPException(409, "担当者対応待ちの案件のみ調べ直せます")
+        db.archive_incident(incident_id)
+        inc = incident.create(current["symptom"], current["site"],
+                              current["business"], current["reporter"],
+                              mode=settings.agent_mode)
+        carry = {"reinvestigation_of": incident_id}
+        if current.get("topology_document_id"):
+            carry["topology_document_id"] = current["topology_document_id"]
+        inc = incident.set_fields(inc["id"], **carry)
+        agent.start_investigation(inc["id"])
+        return inc
 
 
 class BusinessCheckReq(BaseModel):
@@ -245,14 +322,24 @@ def demo_ground_truth() -> dict[str, Any]:
     return scenario.ground_truth()
 
 
+@app.get("/api/demo/failover")
+def demo_failover() -> dict[str, Any]:
+    """冗長化制御の検知・切替履歴。**正解フラグは含まない**（審査画面へ映すため）。"""
+    try:
+        return scenario.failover()
+    except Exception as exc:  # noqa: BLE001  sim 停止中は空で返し、UI は非表示にする
+        return {"history": [], "error": str(exc)}
+
+
 @app.get("/api/config")
 def get_config() -> dict[str, Any]:
+    sim = scenario.sim_health()
     return {
         "agent_mode": settings.agent_mode,
         "route_mode": settings.nw_route_mode,
         "has_api_key": settings.has_api_key,  # キーの値は返さない
         "token_required": settings.approval_token is not None,  # トークン値は返さない
-        "sim": scenario.sim_health(),
+        "sim": sim,
         "approval_ttl_seconds": settings.approval_ttl_seconds,
     }
 
