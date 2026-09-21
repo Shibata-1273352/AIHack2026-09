@@ -22,7 +22,7 @@
 >   浮遊チップの幅式がラテン等幅前提だった問題
 >
 > 経緯と意図は [../demo-script.md](../demo-script.md)（4分版）と
-> [../article-draft.md](../article-draft.md) を参照。
+> [提出記事](../../articles/netwalker-aihack2026.md) を参照。
 
 ---
 
