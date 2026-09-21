@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 import threading
 import time
 from pathlib import Path
@@ -29,6 +30,20 @@ app.add_middleware(
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["*"], allow_headers=["*"],
 )
+
+
+def require_token(request: Request) -> None:
+    """変更系API（承認・注入・リセット）の共有トークン検査（M-09/N-02）。
+
+    APPROVAL_TOKEN 設定時のみ有効。ヘッダ X-Netwalker-Token を定数時間比較し、
+    不一致・欠落は 403。未設定時は開発モードとして従来どおり通す。
+    """
+    if settings.approval_token is None:
+        return
+    expected = settings.approval_token.get_secret_value()
+    supplied = request.headers.get("X-Netwalker-Token", "")
+    if not secrets.compare_digest(supplied.encode(), expected.encode()):
+        raise HTTPException(403, "操作トークンが一致しません。案内されたURL（?token=付き）から開き直してください")
 
 
 def _pulse_loop() -> None:
@@ -119,7 +134,8 @@ class ApprovalReq(BaseModel):
 
 
 @app.post("/api/incidents/{incident_id}/approval")
-def decide_approval(incident_id: str, req: ApprovalReq) -> dict[str, Any]:
+def decide_approval(incident_id: str, req: ApprovalReq, request: Request) -> dict[str, Any]:
+    require_token(request)
     with runtime.lock:
         current = db.latest_incident()
         if not current or current["id"] != incident_id or runtime.workers:
@@ -200,7 +216,8 @@ class InjectReq(BaseModel):
 
 
 @app.post("/api/demo/inject")
-def demo_inject(req: InjectReq) -> dict[str, Any]:
+def demo_inject(req: InjectReq, request: Request) -> dict[str, Any]:
+    require_token(request)
     if req.fault not in ("a", "b", "both"):
         raise HTTPException(422, "fault must be a|b|both")
     with runtime.lock:
@@ -212,7 +229,8 @@ def demo_inject(req: InjectReq) -> dict[str, Any]:
 
 
 @app.post("/api/demo/reset")
-def demo_reset() -> dict[str, Any]:
+def demo_reset(request: Request) -> dict[str, Any]:
+    require_token(request)
     with runtime.lock:
         if runtime.workers:
             raise HTTPException(409, "調査・適用処理中です。処理完了または承認待ちになってからリセットしてください")
@@ -233,6 +251,7 @@ def get_config() -> dict[str, Any]:
         "agent_mode": settings.agent_mode,
         "route_mode": settings.nw_route_mode,
         "has_api_key": settings.has_api_key,  # キーの値は返さない
+        "token_required": settings.approval_token is not None,  # トークン値は返さない
         "sim": scenario.sim_health(),
         "approval_ttl_seconds": settings.approval_ttl_seconds,
     }
@@ -300,7 +319,9 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 async def spa(path: str):
     if path.startswith("api/"):
         raise HTTPException(404)
-    target = STATIC_DIR / path
+    target = (STATIC_DIR / path).resolve()
+    if not target.is_relative_to(STATIC_DIR):  # パストラバーサル防止
+        raise HTTPException(404)
     if path and target.is_file():
         return FileResponse(target)
     index = STATIC_DIR / "index.html"

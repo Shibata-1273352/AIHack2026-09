@@ -529,6 +529,17 @@ background:#fff; border:1px solid #e3e6ea; border-radius:10px; padding:10px 16px
 内容（原文）: `trace: {{traceId}}` / `local: DGX Spark · qwen2.5-vl-32b` / `router: OrcaRouter · 方式B（段階別）` / `calls {{calls}} · tokens {{tokens}} · ¥{{cost}}` / `data_class: local_only`
 値: `traceId = '4b1e…0042'`、`calls` はステップ別 `{1:0, 2:3, 3:3+probeIdx*2, 4:17, 5:19, 6:21}`、`tokens = (calls*1840).toLocaleString()`、`cost = (calls*6.2).toFixed(0)`。
 
+> **【未実装・W扱い】** `local: DGX Spark · qwen2.5-vl-32b` と `data_class: local_only` の
+> 2項目は**モックアップ上の表示であり、実装では表示しない**。
+> - DGX Spark ローカルLLM（M-16）は未接続。推論は OrcaRouter 経由または scripted のみ
+>   （第15章の誠実性方針により、接続していないものを接続済みのように見せない）
+> - 現行の実データは全て `data_class: external_allowed`。送信ゲート自体は実装済みで
+>   （`backend/app/llm/gateway.py:28 SendPolicyViolation`）、`local_only` のデータが
+>   発生した場合は外部送信前に遮断されるが、デモ経路では該当データが無いため表示もしない
+>
+> 実装の技術詳細ストリップは `trace` / `router` / `calls·tokens·cost` の3項目で構成する。
+> ローカル推論を接続した場合に限り、上記2項目を表示に戻す。
+
 ---
 
 ## 5. SVG構成図の完全仕様

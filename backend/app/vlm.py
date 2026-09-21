@@ -113,7 +113,8 @@ def read_topology(incident_id: str) -> dict[str, Any]:
             try:
                 resp = gateway.call(incident_id, "vlm-topology", "vlm",
                                     system=SYSTEM_PROMPT, user=user_content,
-                                    json_schema=GRAPH_SCHEMA)
+                                    json_schema=GRAPH_SCHEMA,
+                                    data_class="external_allowed")  # 構成図は外部送信可（§8）
                 run_meta = {"outcome": resp.outcome, "route": resp.route,
                             "resolved_model": resp.resolved_model,
                             "latency_ms": resp.latency_ms}

@@ -4,6 +4,29 @@
 import { useEffect, useRef, useState } from "react";
 import type { Bundle, AppConfig, SimPulse } from "./types";
 
+// 変更系API用の操作トークン（M-09/N-02）。demo.sh が案内する URL の ?token= から
+// 取り込み localStorage に保持、以降の POST に X-Netwalker-Token として付与する。
+// サーバ側でトークン未設定（開発モード）なら無くても通る。
+function captureToken(): void {
+  try {
+    const url = new URL(window.location.href);
+    const t = url.searchParams.get("token");
+    if (t) {
+      localStorage.setItem("nw_token", t);
+      url.searchParams.delete("token");   // アドレスバー・履歴に残さない
+      window.history.replaceState(null, "", url.toString());
+    }
+  } catch { /* localStorage 不可の環境ではヘッダ無しで送る（開発モード用） */ }
+}
+captureToken();
+
+function tokenHeader(): Record<string, string> {
+  try {
+    const t = localStorage.getItem("nw_token");
+    return t ? { "X-Netwalker-Token": t } : {};
+  } catch { return {}; }
+}
+
 const EMPTY: Bundle = {
   incident: null, evidence: [], hypotheses: [], plans: [], approvals: [],
   executions: [], spans: [], model_runs: [], steps: [],
@@ -141,7 +164,7 @@ export function useConfig(): AppConfig | null {
 export async function post(path: string, body?: unknown): Promise<any> {
   const r = await fetch(path, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...tokenHeader() },
     body: body === undefined ? "{}" : JSON.stringify(body),
   });
   const data = await r.json().catch(() => ({}));

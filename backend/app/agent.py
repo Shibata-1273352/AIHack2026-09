@@ -383,7 +383,8 @@ def _investigate_llm(incident_id: str, tools: ToolBelt) -> None:
         user = _render_history(history)
         resp = gateway.call(incident_id, f"decide-{step_no:02d}", "decide",
                             system=LLM_SYSTEM, user=user,
-                            json_schema=DECIDE_SCHEMA)
+                            json_schema=DECIDE_SCHEMA,
+                            data_class="external_allowed")  # 観測サマリのみ送信（§8）
         if not resp.parsed or not resp.schema_ok:
             raise RuntimeError(f"構造化出力の取得に失敗 (outcome={resp.outcome})")
         d = resp.parsed

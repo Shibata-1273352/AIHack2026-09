@@ -25,6 +25,10 @@ class BudgetExceeded(Exception):
     pass
 
 
+class SendPolicyViolation(Exception):
+    """外部送信不可データの送信をプロバイダ呼出前に遮断する（T-13/T-19）。"""
+
+
 class ModelGateway:
     def __init__(self) -> None:
         self.mode = settings.nw_route_mode
@@ -78,7 +82,17 @@ class ModelGateway:
 
     def call(self, incident_id: str, key: str, profile_name: str, *,
              system: str, user: str | list[dict[str, Any]],
-             json_schema: dict[str, Any] | None = None) -> ModelResponse:
+             json_schema: dict[str, Any] | None = None,
+             data_class: str = "external_allowed") -> ModelResponse:
+        # 送信ゲート（T-13/T-19）: external_allowed 以外はモード・キー有無に関わらず
+        # プロバイダ呼出前に遮断し、違反を model_run として監査記録する。
+        if data_class != "external_allowed":
+            self._record_run(incident_id, key, profile_name, None,
+                             outcome="send_policy_violation",
+                             error=f"data_class={data_class} は外部送信不可")
+            raise SendPolicyViolation(
+                f"data_class={data_class} のデータは外部LLMへ送信できません（送信ゲート）")
+
         profile = policy.resolve(profile_name)
 
         # 費用上限: 直前の利用額 + 次呼出の予約額（上限額で保守的に見積る）

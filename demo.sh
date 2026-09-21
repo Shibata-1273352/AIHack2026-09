@@ -72,9 +72,13 @@ if [ ! -f backend/static/index.html ]; then
   (cd frontend && npm install && npm run build)
 fi
 
+# ---- 操作トークン（M-09/N-02: 承認・注入・リセットの認証） ----
+# 環境変数 APPROVAL_TOKEN があればそれを使い、無ければ起動ごとに生成する。
+APPROVAL_TOKEN="${APPROVAL_TOKEN:-$(openssl rand -hex 12 2>/dev/null || date +%s%N | shasum | cut -c1-24)}"
+
 # ---- バックエンド ----
 say "バックエンドを起動します（:${API_PORT}）…"
-(cd backend && uv sync -q && nohup uv run uvicorn app.main:app \
+(cd backend && uv sync -q && APPROVAL_TOKEN="${APPROVAL_TOKEN}" nohup uv run uvicorn app.main:app \
   --host 0.0.0.0 --port "${API_PORT}" > ../backend.out.log 2>&1 &)
 for i in $(seq 1 20); do
   curl -sf "localhost:${API_PORT}/api/config" >/dev/null && break
@@ -88,9 +92,10 @@ IP=$(ipconfig getifaddr en0 2>/dev/null || echo "<MacのIP>")
 say "起動完了！"
 echo ""
 echo "  実行モード      : ${MODE}"
-echo "  Mac コンソール  : http://localhost:${API_PORT}/console"
-echo "  iPad 承認端末   : http://${IP}:${API_PORT}/approve   （同一Wi-Fi）"
-echo "  デモ運転席      : http://localhost:${API_PORT}/ops"
+echo "  Mac コンソール  : http://localhost:${API_PORT}/console?token=${APPROVAL_TOKEN}"
+echo "  iPad 承認端末   : http://${IP}:${API_PORT}/approve?token=${APPROVAL_TOKEN}   （同一Wi-Fi）"
+echo "  デモ運転席      : http://localhost:${API_PORT}/ops?token=${APPROVAL_TOKEN}"
+echo "  ※ 承認・注入・リセットは上記 token 付きURLから開いた画面のみ実行可能"
 echo ""
 echo "  デモ手順: /ops で ①リセット → ②複合障害を注入 → ③申告→調査開始"
 echo "  停止:     ./demo.sh stop"

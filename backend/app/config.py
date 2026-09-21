@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     # auto: キーがあれば llm、なければ scripted
     nw_agent_mode: Literal["auto", "scripted", "llm"] = "auto"
 
+    # 変更系API（承認・障害注入・リセット）の共有トークン（M-09/N-02）。
+    # 未設定時は開発モード＝認証なし。demo.sh が起動時に生成して設定する。
+    approval_token: SecretStr | None = None
+
     # 承認の有効期限（§10.4）
     approval_ttl_seconds: int = 300
     # 観測前提の鮮度（適用直前の再観測、§10.4）
