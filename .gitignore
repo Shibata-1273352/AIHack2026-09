@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 機密情報・環境変数ファイル
 .env
 
@@ -7,3 +8,37 @@ __pycache__/
 .venv/
 topology_result.json
 test_topology.pdf
+=======
+# 機微情報（絶対にコミットしない）
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.crt
+*.csr
+
+# 依存・ビルド成果物
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+.uv-cache/
+uv.lock
+
+# 実行時データ
+*.sqlite3
+data/*.db
+backend/data/
+backend/var/
+sim/run/
+*.log
+logs/
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+>>>>>>> 852a86f07a3347b1a459ac6cd086fac0e56a31d8

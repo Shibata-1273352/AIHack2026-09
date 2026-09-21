@@ -1,0 +1,24 @@
+{
+  "version": "site-A-2026-09-20",
+  "site": "拠点A",
+  "nodes": [
+    {"id": "client", "label": "業務端末", "role": "endpoint", "zone": "拠点A",
+     "aliases": ["業務端末", "端末", "クライアント", "client", "PC"]},
+    {"id": "gw", "label": "拠点GW", "role": "gateway", "zone": "拠点A",
+     "aliases": ["拠点GW", "拠点ゲートウェイ", "GW", "gateway", "ゲートウェイ"]},
+    {"id": "r1", "label": "経路ノード r1（主回線）", "role": "router", "zone": "WAN",
+     "aliases": ["r1", "主回線", "主経路", "R1"]},
+    {"id": "r2", "label": "経路ノード r2（予備回線）", "role": "router", "zone": "WAN",
+     "aliases": ["r2", "予備回線", "予備経路", "R2"]},
+    {"id": "srv", "label": "受注サービス", "role": "server", "zone": "DC",
+     "service_ip": "10.0.100.10", "service_fqdn": "order.example.com",
+     "aliases": ["受注サービス", "受注", "order", "サーバ", "server"]}
+  ],
+  "links": [
+    {"id": "client-gw", "a": "client", "b": "gw", "kind": "lan"},
+    {"id": "gw-r1", "a": "gw", "b": "r1", "kind": "primary"},
+    {"id": "gw-r2", "a": "gw", "b": "r2", "kind": "backup"},
+    {"id": "r1-srv", "a": "r1", "b": "srv", "kind": "primary"},
+    {"id": "r2-srv", "a": "r2", "b": "srv", "kind": "backup"}
+  ]
+}
