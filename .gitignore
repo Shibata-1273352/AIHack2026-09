@@ -1,0 +1,9 @@
+# 機密情報・環境変数ファイル
+.env
+
+# Pythonのキャッシュフォルダや仮想環境
+__pycache__/
+*.pyc
+.venv/
+topology_result.json
+test_topology.pdf
